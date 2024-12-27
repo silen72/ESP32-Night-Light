@@ -1,18 +1,47 @@
 #include <Arduino.h>
+#include <WebServer.h>
 
-// put function declarations here:
-int myFunction(int, int);
+#include "touch.h"
+#include "ldr.h"
+#include "led_strip.h"
+#include "config.h"
+#include "presence.h"
 
-void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+unsigned long lastReport = 0;
+
+void setup()
+{
+  MONITOR_SERIAL.begin(115200);
+  MONITOR_SERIAL.println(F("Start"));
+
+  configSetup();
+  ldrSetup();
+  touchSetup();
+  presenceSetup();
+
+  ledStripSetup();
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
-}
+void loop()
+{
+  configLoop();
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+  ldrLoop();
+
+  touchLoop();
+
+  presenceLoop();
+  
+  ledStripLoop();
+
+  unsigned long now = millis();
+  if (now - lastReport > 1000)
+  {
+    MONITOR_SERIAL.print(F("ldr: "));
+    MONITOR_SERIAL.println(averagedBrightness());
+    lastReport = now;
+
+    LD2410Detection prsInfo = presenceInfo();
+
+  }
 }
