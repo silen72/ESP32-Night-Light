@@ -10,9 +10,21 @@
 
 struct LD2410Firmware
 {
-    uint8_t Major;
-    uint8_t Minor;
-    uint32_t Bugfix;
+    bool Valid = false;
+    uint8_t Major = 0;
+    uint8_t Minor = 0;
+    uint32_t Bugfix = 0;
+};
+
+struct LD2410Config
+{
+    bool Valid = false;
+    uint8_t max_gate = 0;
+    uint8_t max_moving_gate = 0;
+    uint8_t max_stationary_gate = 0;
+    uint16_t sensor_idle_time = 0;
+    uint8_t motion_sensitivity[9] = {0,0,0,0,0,0,0,0,0};
+    uint8_t stationary_sensitivity[9] = {0,0,0,0,0,0,0,0,0};
 };
 
 struct LD2410Detection
@@ -28,7 +40,10 @@ struct LD2410Detection
 
 LD2410Firmware firmwareInfo();
 LD2410Detection presenceInfo();
+LD2410Config currentConfig();
 bool isConnected();
+bool requestFactoryReset();
+
 
 void presenceSetup();
 void presenceLoop();
