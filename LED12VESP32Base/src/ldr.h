@@ -5,6 +5,7 @@
 
 // LDR is connected to GPIO36 / VP
 static const uint8_t LDR_PIN = 36;
+static const uint16_t MAX_BRIGHTNESS = 4095;
 
 void ldrSetup();
 void ldrLoop();

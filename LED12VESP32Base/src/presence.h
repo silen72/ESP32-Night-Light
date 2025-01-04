@@ -44,6 +44,7 @@ LD2410Config currentConfig();
 bool isConnected();
 bool requestFactoryReset();
 
+void presenceDebug(Stream &terminalStream);
 
 void presenceSetup();
 void presenceLoop();
