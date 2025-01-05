@@ -15,6 +15,7 @@ static const char *PrefMaxBrightness = "mbr";
 static const char *PrefOnBrightness = "obr";
 static const char *PrefOnDuration = "odu";
 static const char *PrefNightLightBrightness = "nlbr";
+static const char *PrefMaxNightLightBrightness = "mnlb";
 static const char *PrefAllowNightLight = "alnl";
 static const char *PrefNightLightLdrThreshold = "nllt";
 static const char *PrefRestoreAfterPowerloss = "rapl";
@@ -56,14 +57,15 @@ void configLoop()
 uint8_t stepBrightness() { return myPrefs.getUChar(PrefStepBrightness, DEFAULT_BRIGHTNESS_STEP); }
 void setStepBrightness(uint8_t value)
 {
-    if (value > 0)
-        myPrefs.putUChar(PrefStepBrightness, value);
+    if (value == 0)
+        value = 1;
+    myPrefs.putUChar(PrefStepBrightness, value);
 }
 
 uint16_t transitionDurationMs() { return myPrefs.getUShort(PrefTransitionDurationMs, DEFAULT_TRANSITION_DURATION_MS); }
 void setTransitionDurationMs(uint16_t value) { myPrefs.putUShort(PrefTransitionDurationMs, value); }
 
-uint8_t maxBrightness() { return myPrefs.getUChar(PrefMaxBrightness, DEFAULT_BRIGHTNESS_UPPER_LIMIT); }
+uint8_t maxBrightness() { return myPrefs.getUChar(PrefMaxBrightness, DEFAULT_MAX_BRIGHTNESS); }
 void setMaxBrightness(uint8_t value) { myPrefs.putUChar(PrefMaxBrightness, value); }
 
 uint8_t onBrightness() { return myPrefs.getUChar(PrefOnBrightness, DEFAULT_ON_BRIGHTNESS); }
@@ -71,6 +73,9 @@ void setOnBrightness(uint8_t value) { myPrefs.putUChar(PrefOnBrightness, value);
 
 uint8_t nightLightBrightness() { return myPrefs.getUChar(PrefNightLightBrightness, DEFAULT_NIGHTLIGHT_BRIGHTNESS); }
 void setNightLightBrightness(uint8_t value) { myPrefs.putUChar(PrefNightLightBrightness, value); }
+
+uint8_t maxNightLightBrightness() { return myPrefs.getUChar(PrefMaxNightLightBrightness, DEFAULT_MAX_NIGHTLIGHT_BRIGHTNESS); }
+void setMaxNightLightBrightness(uint8_t value) { myPrefs.putUChar(PrefMaxNightLightBrightness, value); }
 
 bool allowNightLight() { return myPrefs.getBool(PrefAllowNightLight, DEFAULT_ALLOW_NIGHTLIGHT); }
 void setAllowNightLight(bool value) { myPrefs.putBool(PrefAllowNightLight, value); }
@@ -80,9 +85,6 @@ void setNightLightOnDuration(uint16_t value) { myPrefs.putUShort(PrefOnDuration,
 
 uint16_t nightLightThreshold() { return myPrefs.getUShort(PrefNightLightLdrThreshold, DEFAULT_LDR_NIGHTLIGHT_THRESHOLD); }
 void setNightLightThreshold(uint16_t value) { myPrefs.putUShort(PrefNightLightLdrThreshold, value); }
-
-bool restoreAfterPowerloss() { return myPrefs.getBool(PrefRestoreAfterPowerloss, DEFAULT_RESTORE_STATE_AFTER_POWERLOSS); }
-void setRestoreAfterPowerloss(bool value) { myPrefs.putBool(PrefRestoreAfterPowerloss, value); }
 
 uint16_t minMovingTargetDistance() { return myPrefs.getUShort(PrefMinMovingTargetDistance, DEFAULT_MIN_MOVING_TARGET_DISTANCE); }
 void setMinMovingTargetDistance(uint16_t value) { myPrefs.putUShort(PrefMinMovingTargetDistance, value); }

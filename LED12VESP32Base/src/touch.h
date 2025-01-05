@@ -7,16 +7,17 @@ typedef std::function<void(uint8_t)> TouchCallbackFunction;
 
 enum ButtonNumber
 {
-    one,
-    two,
-    three,
-    four
+    ONE,
+    TWO,
+    THREE,
+    FOUR
 };
 
 void setClickHandler(ButtonNumber button, TouchCallbackFunction f);
 void setDoubleClickHandler(ButtonNumber button, TouchCallbackFunction f);
 void setTripleClickHandler(ButtonNumber button, TouchCallbackFunction f);
 void setLongClickHandler(ButtonNumber button, TouchCallbackFunction f);
+void setReleasedHandler(ButtonNumber button, TouchCallbackFunction f);
 
 // green wire
 static uint8_t const TOUCH1_PIN = 27;

@@ -10,7 +10,7 @@ bool radarConnected = false;
 unsigned long setupTs = 0;
 bool setupDone = false;
 
-Stream *debug_uart_presence = nullptr; // The stream used for the debugging
+Stream *debug_uart_presence = nullptr;
 
 LD2410Firmware firmwareInfo()
 {
@@ -80,7 +80,7 @@ void presenceDebug(Stream &terminalStream)
 
 void presenceSetup()
 {
-  // radar.debug(MONITOR_SERIAL);                                      // Uncomment to show debug information from the library on the Serial Monitor. By default this does not show sensor reads as they are very frequent.
+  // radar.debug(MONITOR_SERIAL);                                     // Uncomment to show debug information from the library on the Serial Monitor. By default this does not show sensor reads as they are very frequent.
   RADAR_SERIAL.begin(256000, SERIAL_8N1, RADAR_RX_PIN, RADAR_TX_PIN); // UART for monitoring the radar
   setupTs = millis();
 }

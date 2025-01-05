@@ -8,6 +8,7 @@ TouchCallbackFunction clicked_cb[4] = {NULL};
 TouchCallbackFunction doubleClicked_cb[4] = {NULL};
 TouchCallbackFunction tripleClicked_cb[4] = {NULL};
 TouchCallbackFunction longClicked_cb[4] = {NULL};
+TouchCallbackFunction released_cb[4] = {NULL};
 
 Stream *debug_uart_touch = nullptr;				// The stream used for the debugging
 
@@ -74,6 +75,19 @@ void tripleClicked(Button2 &btn)
   }
 }
 
+void released(Button2 &btn)
+{
+  uint8_t number = buttonNumber(btn);
+  if (number <= LAST_BUTTON && released_cb[number] != NULL)
+    released_cb[number](number);
+  if (debug_uart_touch != nullptr)
+  {
+    debug_uart_touch->print(F("released: "));
+    debug_uart_touch->println(number);
+  }
+}
+
+
 void setupButton(const uint8_t pin, Button2 &btn)
 {
   // the touch buttons are active high
@@ -83,6 +97,7 @@ void setupButton(const uint8_t pin, Button2 &btn)
   btn.setLongClickDetectedHandler(longClicked);
   btn.setLongClickDetectedRetriggerable(true);
   btn.setTripleClickHandler(tripleClicked);
+  btn.setReleasedHandler(released);
   if (debug_uart_touch != nullptr)
   {
     
@@ -93,25 +108,11 @@ void setupButton(const uint8_t pin, Button2 &btn)
   }
 }
 
-void setClickHandler(ButtonNumber button, TouchCallbackFunction f)
-{
-  clicked_cb[button] = f;
-}
-
-void setDoubleClickHandler(ButtonNumber button, TouchCallbackFunction f)
-{
-  doubleClicked_cb[button] = f;
-}
-
-void setLongClickHandler(ButtonNumber button, TouchCallbackFunction f)
-{
-  longClicked_cb[button] = f;
-}
-
-void setTripleClickHandler(ButtonNumber button, TouchCallbackFunction f)
-{
-  tripleClicked_cb[button] = f;
-}
+void setClickHandler(ButtonNumber button, TouchCallbackFunction f){  clicked_cb[button] = f;}
+void setDoubleClickHandler(ButtonNumber button, TouchCallbackFunction f){  doubleClicked_cb[button] = f;}
+void setLongClickHandler(ButtonNumber button, TouchCallbackFunction f){  longClicked_cb[button] = f;}
+void setTripleClickHandler(ButtonNumber button, TouchCallbackFunction f){  tripleClicked_cb[button] = f;}
+void setReleasedHandler(ButtonNumber button, TouchCallbackFunction f){  released_cb[button] = f;}
 
 void touchDebug(Stream &terminalStream)
 {
