@@ -302,13 +302,13 @@ bool enableNightLight()
 // ToDo: add a function that gives distinguishable confirmations for "on" and "off"
 
 // Let the led strip blink briefly to give a visual confirmation
-void confirmViaLEDStrip()
+void confirmViaLEDStrip(bool alsoConfirmValue = false, bool value = false)
 {
   if (_debugUartMain != nullptr)
   {
     _debugUartMain->println(F("confirm otherwise invisible change via LED strip"));
   }
-  ledStripConfirm();
+  ledStripConfirm(alsoConfirmValue, value);
 }
 
 // Set a target brightness
@@ -375,13 +375,18 @@ void ctrlClickOn(uint8_t btn)
 {
   debugButtonAndState(OnButton, single_click);
 
-  // do nothing when already on or transitioning to on
+  
   switch (_state)
   {
+  // do nothing when transitioning to on
   case START_TRANSIT_TO_ON:
   case TRANSIT_TO_ON:
-  case ON:
     debugClickIgnored();
+    break;
+  // when on toggle between max brightness and configured brightness
+  case ON:
+    setTargetBrightness(_targetBrightness < _maxBrightness ? _maxBrightness : _onBrightness);
+    setState(START_TRANSIT_TO_ON);
     return;
   }
   setTargetBrightness(_onBrightness);
@@ -664,7 +669,7 @@ void ctrlClickOff(uint8_t btn)
     bool changed = setNightLightModeAllowed(true);
     if (changed)
     {
-      confirmViaLEDStrip();
+      confirmViaLEDStrip(true, true);
     }
     break;
   }
@@ -689,7 +694,7 @@ void ctrlDblClickOff(uint8_t btn)
 {
   debugButtonAndState(OffButton, double_click);
   setNightLightModeAllowed(!_allowNightLightMode); // toggling always changes, so no need to handle the return value
-  confirmViaLEDStrip();
+  confirmViaLEDStrip(true, _allowNightLightMode);
 }
 
 // ----------------------------------

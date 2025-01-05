@@ -20,7 +20,7 @@ uint8_t ledStripCurrentBrightness();
 void ledStripSetTargetBrightness(uint8_t brightness);
 
 // give a visual confirmation via the LED strip
-void ledStripConfirm();
+void ledStripConfirm(bool alsoConfirmState = false, bool confirmThisState = false);
 
 void ledStripDebug(Stream &terminalStream);
 
