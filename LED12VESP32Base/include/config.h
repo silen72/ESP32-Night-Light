@@ -21,6 +21,16 @@ static const uint16_t DEFAULT_MIN_STATIONARY_TARGET_DISTANCE = 0;
 static const uint16_t DEFAULT_MAX_STATIONARY_TARGET_DISTANCE = UINT16_MAX;
 static const uint8_t DEFAULT_MIN_STATIONARY_TARGET_ENERGY = 0;
 static const uint8_t DEFAULT_MAX_STATIONARY_TARGET_ENERGY = UINT8_MAX;
+static const char DEFAULT_WIFI_AP_SSID[] = "esp32LEDStrip";
+static const size_t DEFAULT_WIFI_AP_SSID_SIZE = 13;
+static const char DEFAULT_WIFI_AP_PASSPHRASE[] = "";
+static const size_t DEFAULT_WIFI_AP_PASSPHRASE_SIZE = 0;
+static const uint32_t DEFAULT_WIFI_AP_IP = IPAddress(192, 168, 72, 1);
+static const uint32_t DEFAULT_WIFI_AP_NETMASK = IPAddress(255, 255, 255, 0);
+static const char DEFAULT_WIFI_STA_SSID[] = "";
+static const size_t DEFAULT_WIFI_STA_SSID_SIZE = 0;
+static const char DEFAULT_WIFI_STA_PASSPHRASE[] = "";
+static const size_t DEFAULT_WIFI_STA_PASSPHRASE_SIZE = 0;
 
 // Get preference: Night light stays on for this many seconds, then checks if it is still needed
 uint16_t nightLightOnDuration();
@@ -101,6 +111,21 @@ void setMinMovingTargetEnergy(uint8_t value);
 uint8_t maxMovingTargetEnergy();
 // Set preference for presence detection: A moving target must have at most this "energy" (confidence) (0 .. 100) to be considered to enable the night light
 void setMaxMovingTargetEnergy(uint8_t value);
+
+size_t getWifiApSsid(char *value, size_t maxLen);
+void setWifiApSsid(const char *value);
+size_t getifiApPassphrase(char *value, size_t maxLen);
+// A valid passphrase must have at least eight characters. Will set the value and return true when the requirement is met. Will not save the value and return false otherwise.
+bool setWifiApPassphrase(const char *value);
+uint32_t wifiApIPv4Address();
+void setWifiAPpIPv4Address(uint32_t value);
+uint32_t wifiApIPv4Netmask();
+void setWifiAPpIPv4Netmask(uint32_t value);
+
+size_t getWifiStaSsid(char *value, size_t maxLen);
+void setWifiStaSsid(const char *value);
+size_t getWifiStaPassphrase(char *value, size_t maxLen);
+void setWifiStaPassphrase(const char *value);
 
 // configure the handling of preferences and configurations
 void configSetup();

@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <Preferences.h>
+#include <nvs_flash.h>
+
 #include "config.h"
 
 Preferences myPrefs;
@@ -29,6 +31,13 @@ static const char *PrefMinStationaryTargetEnergy = "mise";
 static const char *PrefMaxStationaryTargetEnergy = "msse";
 static const char *PrefSavedState = "sast";
 
+static const char *PrefWifiApSsid = "wass";
+static const char *PrefWifiApPassphrase = "wapa";
+static const char *PrefWifiApIpAddress = "waip";
+static const char *PrefWifiApNetmask = "wanm";
+static const char *PrefWifiStaSsid = "wsss";
+static const char *PrefWifiStaPassphrase = "wspa";
+
 void configSetup()
 {
     myPrefs.begin(PrefsNamespace, false);
@@ -53,6 +62,17 @@ void configLoop()
 {
     // do nothing (yet)
 }
+
+void factoryReset()
+{
+    nvs_flash_erase(); // erase the NVS partition and...
+    nvs_flash_init();  // initialize the NVS partition.
+    ESP.restart();     // reboot
+}
+
+// ToDo:
+// 1) move all sanity checks for values to be saved out of this file
+// 2) call myPrefs.putXXX only when the value differs from the stored value
 
 uint8_t stepBrightness() { return myPrefs.getUChar(PrefStepBrightness, DEFAULT_BRIGHTNESS_STEP); }
 void setStepBrightness(uint8_t value)
@@ -109,3 +129,54 @@ void setMinStationaryTargetEnergy(uint8_t value) { myPrefs.putUChar(PrefMinStati
 
 uint8_t maxStationaryTargetEnergy() { return myPrefs.getUChar(PrefMaxStationaryTargetEnergy, DEFAULT_MAX_STATIONARY_TARGET_ENERGY); }
 void setMaxStationaryTargetEnergy(uint8_t value) { myPrefs.putUChar(PrefMaxStationaryTargetEnergy, value); }
+
+size_t getWifiApSsid(char *value, size_t maxLen)
+{
+    if (myPrefs.isKey(PrefWifiApSsid))
+        return myPrefs.getString(PrefWifiApSsid, value, maxLen);
+    strncpy(value, DEFAULT_WIFI_AP_SSID, maxLen);
+    return DEFAULT_WIFI_AP_SSID_SIZE;
+}
+void setWifiApSsid(const char *value) { myPrefs.putString(PrefWifiApSsid, value); }
+
+size_t getWifiApPassphrase(char *value, size_t maxLen)
+{
+    if (myPrefs.isKey(PrefWifiApPassphrase))
+        return myPrefs.getString(PrefWifiApPassphrase, value, maxLen);
+    strncpy(value, DEFAULT_WIFI_AP_PASSPHRASE, maxLen);
+    return DEFAULT_WIFI_AP_PASSPHRASE_SIZE;
+}
+bool setWifiApPassphrase(const char *value)
+{
+    bool valid = (strlen(value) > 7);
+    if (valid)
+    {
+        myPrefs.putString(PrefWifiApPassphrase, value);
+    }
+    return valid;
+}
+
+uint32_t wifiApIPv4Address() { return myPrefs.getLong(PrefWifiApIpAddress, DEFAULT_WIFI_AP_IP); }
+void setWifiAPpIPv4Address(uint32_t value) { myPrefs.putLong(PrefWifiApIpAddress, value); }
+
+uint32_t wifiApIPv4Netmask() { return myPrefs.getLong(PrefWifiApNetmask, DEFAULT_WIFI_AP_NETMASK); }
+void setWifiAPpIPv4Netmask(uint32_t value) { myPrefs.putLong(PrefWifiApNetmask, value); }
+
+size_t getWifiStaSsid(char *value, size_t maxLen)
+{
+    if (myPrefs.isKey(PrefWifiStaSsid))
+        return myPrefs.getString(PrefWifiStaSsid, value, maxLen);
+    strncpy(value, DEFAULT_WIFI_STA_SSID, maxLen);
+    return DEFAULT_WIFI_STA_SSID_SIZE;
+}
+void setWifiStaSsid(const char * value) { myPrefs.putString(PrefWifiStaSsid, value); }
+
+size_t getWifiStaPassphrase(char *value, size_t maxLen)
+{
+    if (myPrefs.isKey(PrefWifiStaPassphrase))
+        return myPrefs.getString(PrefWifiStaPassphrase, value, maxLen);
+    strncpy(value, DEFAULT_WIFI_STA_PASSPHRASE, maxLen);
+    return DEFAULT_WIFI_STA_PASSPHRASE_SIZE;
+}
+
+void setWifiStaPassphrase(const char *value) { myPrefs.putString(PrefWifiStaPassphrase, value); }

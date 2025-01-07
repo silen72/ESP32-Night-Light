@@ -3,6 +3,7 @@
 #include <Button2.h>
 
 #include "touch.h"
+#include "wifi_handler.h"
 #include "ldr.h"
 #include "led_strip.h"
 #include "config.h"
@@ -21,7 +22,7 @@ enum State
   TRANSIT_TO_NIGHT_LIGHT,       // Gradually increases or decreases the brightness to _targetBrightness, until _targetBrightness equals the actual brightness. The next state is then NIGHT_LIGHT_ON.
   NIGHT_LIGHT_ON                // Night light is on at night light brightness. Constantly checks whether condition for night light is still met. If not, next state is START_TRANSIT_TO_OFF.
 };
-State _state = OFF; // initial state is always OFF -> no light
+State _state = State::OFF; // initial state is always OFF -> no light
 
 bool _allowNightLightMode = true;        // Whether night light should be turned on when it is dark enough and presence is detected
 unsigned long _nightLightEnabledTs = 0;  // Timestamp, when night light was switched on
@@ -714,86 +715,11 @@ void ctrlLongClickOff(int8_t btn)
   confirmViaLEDStrip();
 }
 
-void setup()
-{
-  MONITOR_SERIAL.begin(115200);
-  _debugUartMain = &MONITOR_SERIAL;
-
-  delay(50);
-  MONITOR_SERIAL.println(F("ESP32 LED Night Light initializing ..."));
-
-  configSetup();
-  _allowNightLightMode = allowNightLight();
-  _nightLightOnDuration = nightLightOnDuration() * 1000;
-  _nightLightBrightness = nightLightBrightness();
-  _nightLightThreshold = nightLightThreshold();
-  _maxNightLightBrightness = maxNightLightBrightness();
-  
-  _transitionDurationMs = transitionDurationMs();
-
-  _onBrightness = onBrightness();
-  _maxBrightness = maxBrightness();
-  _stepBrightness = stepBrightness();
-
-  _maxMovingTargetDistance = maxMovingTargetDistance();
-  _minMovingTargetDistance = minMovingTargetDistance();
-  _maxMovingTargetEnergy = maxMovingTargetEnergy();
-  _minMovingTargetEnergy = minMovingTargetEnergy();
-
-  _maxStationaryTargetDistance = maxStationaryTargetDistance();
-  _minStationaryTargetDistance = minStationaryTargetDistance();
-  _maxStationaryTargetEnergy = maxStationaryTargetEnergy();
-  _minStationaryTargetEnergy = minStationaryTargetEnergy();
-
-
-  // touchDebug(MONITOR_SERIAL);
-  touchSetup();
-
-  ldrSetup();
-
-  // presenceDebug(MONITOR_SERIAL);
-  presenceSetup();
-
-  ledStripDebug(MONITOR_SERIAL);
-  ledStripSetup();
-
-  // --- ON button ---
-  // normal click: switch LED strip on
-  setClickHandler(OnButton, ctrlClickOn);
-  // normal click: switch LED strip on AND set max brightness
-  setDoubleClickHandler(OnButton, ctrlDblClickOn);
-  // long click: save current brightness as default
-  setLongClickHandler(OnButton, ctrlLongClickOn);
-
-  // --- PLUS button ---
-  // normal click: increase brightness one step
-  setClickHandler(PlusButton, ctrlClickPlus);
-  // long click: increase brightness one step as long as the button is pressed
-  setLongClickHandler(PlusButton, ctrlLongClickPlus);
-
-  // --- MINUS button ---
-  // normal click: decrease brightness one step
-  setClickHandler(MinusButton, ctrlClickMinus);
-  // long click: decrease brightness one step as long as the button is pressed
-  setLongClickHandler(MinusButton, ctrlLongClickMinus);
-  // release: correctly handle decreasing brightness
-  setReleasedHandler(MinusButton, ctrlReleasedMinus);
-
-  // --- OFF button ---
-  // normal click: switch LED strip off
-  setClickHandler(OffButton, ctrlClickOff);
-  // double click: Toggle allowing night light mode
-  setDoubleClickHandler(OffButton, ctrlDblClickOff);
-  // long click: save current choice for allowing night light mode
-  setLongClickHandler(OffButton, ctrlLongClickOff);
-
-  MONITOR_SERIAL.println(F("ESP32 LED Night Light initialized, light is OFF"));
-}
 
 // When the lamp is off or turning off: check whether the night light should be switched on.
 State nightLightCheckOff()
 {
-  return enableNightLight() ? START_TRANSIT_TO_NIGHT_LIGHT : OFF;
+  return enableNightLight() ? State::START_TRANSIT_TO_NIGHT_LIGHT : State::OFF;
 }
 
 // When the night light is on: check whether the night light can be switched off again.
@@ -848,8 +774,8 @@ State startTransitToOff()
 // Stay in TRANSIT_TO_OFF as long as the target brightness (0) has not been reached, then switch to OFF.
 State transitToOff()
 {
-  State next = checkTransitToBrightness(0, OFF);
-  if (next == OFF)
+  State next = checkTransitToBrightness(0, State::OFF);
+  if (next == State::OFF)
     MONITOR_SERIAL.println(F("Lamp is OFF"));
   return next;
 }
@@ -912,8 +838,89 @@ void handleState()
   setState(nextState);
 }
 
+void setup()
+{
+  MONITOR_SERIAL.begin(115200);
+  _debugUartMain = &MONITOR_SERIAL;
+
+  delay(500);
+  MONITOR_SERIAL.println(F("ESP32 LED Night Light initializing ..."));
+
+  configSetup();
+  _allowNightLightMode = allowNightLight();
+  _nightLightOnDuration = nightLightOnDuration() * 1000;
+  _nightLightBrightness = nightLightBrightness();
+  _nightLightThreshold = nightLightThreshold();
+  _maxNightLightBrightness = maxNightLightBrightness();
+  
+  _transitionDurationMs = transitionDurationMs();
+
+  _onBrightness = onBrightness();
+  _maxBrightness = maxBrightness();
+  _stepBrightness = stepBrightness();
+
+  _maxMovingTargetDistance = maxMovingTargetDistance();
+  _minMovingTargetDistance = minMovingTargetDistance();
+  _maxMovingTargetEnergy = maxMovingTargetEnergy();
+  _minMovingTargetEnergy = minMovingTargetEnergy();
+
+  _maxStationaryTargetDistance = maxStationaryTargetDistance();
+  _minStationaryTargetDistance = minStationaryTargetDistance();
+  _maxStationaryTargetEnergy = maxStationaryTargetEnergy();
+  _minStationaryTargetEnergy = minStationaryTargetEnergy();
+
+  wifiDebug(MONITOR_SERIAL);
+  wifiSetup();
+
+  // touchDebug(MONITOR_SERIAL);
+  touchSetup();
+
+  ldrSetup();
+
+  //presenceDebug(MONITOR_SERIAL);
+  presenceSetup();
+
+  //ledStripDebug(MONITOR_SERIAL);
+  ledStripSetup();
+
+  // --- ON button ---
+  // normal click: switch LED strip on
+  setClickHandler(OnButton, ctrlClickOn);
+  // normal click: switch LED strip on AND set max brightness
+  setDoubleClickHandler(OnButton, ctrlDblClickOn);
+  // long click: save current brightness as default
+  setLongClickHandler(OnButton, ctrlLongClickOn);
+
+  // --- PLUS button ---
+  // normal click: increase brightness one step
+  setClickHandler(PlusButton, ctrlClickPlus);
+  // long click: increase brightness one step as long as the button is pressed
+  setLongClickHandler(PlusButton, ctrlLongClickPlus);
+
+  // --- MINUS button ---
+  // normal click: decrease brightness one step
+  setClickHandler(MinusButton, ctrlClickMinus);
+  // long click: decrease brightness one step as long as the button is pressed
+  setLongClickHandler(MinusButton, ctrlLongClickMinus);
+  // release: correctly handle decreasing brightness
+  setReleasedHandler(MinusButton, ctrlReleasedMinus);
+
+  // --- OFF button ---
+  // normal click: switch LED strip off
+  setClickHandler(OffButton, ctrlClickOff);
+  // double click: Toggle allowing night light mode
+  setDoubleClickHandler(OffButton, ctrlDblClickOff);
+  // long click: save current choice for allowing night light mode
+  setLongClickHandler(OffButton, ctrlLongClickOff);
+
+  MONITOR_SERIAL.println(F("ESP32 LED Night Light initialized, light is OFF"));
+}
+
+
 void loop()
 {
+  wifiLoop();
+
   // handle preferences
   configLoop();
   // read ldr
