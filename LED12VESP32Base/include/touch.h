@@ -13,11 +13,11 @@ enum ButtonNumber
     FOUR
 };
 
-void setClickHandler(ButtonNumber button, TouchCallbackFunction f);
-void setDoubleClickHandler(ButtonNumber button, TouchCallbackFunction f);
-void setTripleClickHandler(ButtonNumber button, TouchCallbackFunction f);
-void setLongClickHandler(ButtonNumber button, TouchCallbackFunction f);
-void setReleasedHandler(ButtonNumber button, TouchCallbackFunction f);
+void setClickHandler(const ButtonNumber button, const TouchCallbackFunction &f);
+void setDoubleClickHandler(const ButtonNumber button, const TouchCallbackFunction &f);
+void setTripleClickHandler(const ButtonNumber button, const TouchCallbackFunction &f);
+void setLongClickHandler(const ButtonNumber button, const TouchCallbackFunction &f);
+void setReleasedHandler(const ButtonNumber button, const TouchCallbackFunction &f);
 
 // green wire
 static uint8_t const TOUCH1_PIN = 27;

@@ -1,5 +1,5 @@
-#ifndef _wifi_H_
-#define _wifi_H_
+#ifndef _WIFIHANDLER_H_
+#define _WIFIHANDLER_H_
 
 #include <Arduino.h>
 

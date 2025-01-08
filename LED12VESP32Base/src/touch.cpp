@@ -14,20 +14,20 @@ Stream *debug_uart_touch = nullptr;				// The stream used for the debugging
 
 static const uint8_t LAST_BUTTON = 3;
 
-uint8_t buttonNumber(Button2 &btn)
+uint8_t buttonNumber(const Button2 &btn)
 {
-  if (btn == touch1)
+  if (btn.getID() == touch1.getID())
     return 0;
-  if (btn == touch2)
+  if (btn.getID() == touch2.getID())
     return 1;
-  if (btn == touch3)
+  if (btn.getID() == touch3.getID())
     return 2;
-  if (btn == touch4)
+  if (btn.getID() == touch4.getID())
     return LAST_BUTTON;
   return LAST_BUTTON + 1;
 }
 
-void clicked(Button2 &btn)
+void clicked(const Button2 &btn)
 {
   uint8_t number = buttonNumber(btn);
   if (number <= LAST_BUTTON && clicked_cb[number] != NULL)
@@ -39,7 +39,7 @@ void clicked(Button2 &btn)
   }
 }
 
-void doubleClicked(Button2 &btn)
+void doubleClicked(const Button2 &btn)
 {
   uint8_t number = buttonNumber(btn);
   if (number <= LAST_BUTTON && doubleClicked_cb[number] != NULL)
@@ -51,7 +51,7 @@ void doubleClicked(Button2 &btn)
   }
 }
 
-void longClicked(Button2 &btn)
+void longClicked(const Button2 &btn)
 {
   uint8_t number = buttonNumber(btn);
   if (number <= LAST_BUTTON && longClicked_cb[number] != NULL)
@@ -63,7 +63,7 @@ void longClicked(Button2 &btn)
   }
 }
 
-void tripleClicked(Button2 &btn)
+void tripleClicked(const Button2 &btn)
 {
   uint8_t number = buttonNumber(btn);
   if (number <= LAST_BUTTON && tripleClicked_cb[number] != NULL)
@@ -75,7 +75,7 @@ void tripleClicked(Button2 &btn)
   }
 }
 
-void released(Button2 &btn)
+void released(const Button2 &btn)
 {
   uint8_t number = buttonNumber(btn);
   if (number <= LAST_BUTTON && released_cb[number] != NULL)
@@ -108,11 +108,11 @@ void setupButton(const uint8_t pin, Button2 &btn)
   }
 }
 
-void setClickHandler(ButtonNumber button, TouchCallbackFunction f){  clicked_cb[button] = f;}
-void setDoubleClickHandler(ButtonNumber button, TouchCallbackFunction f){  doubleClicked_cb[button] = f;}
-void setLongClickHandler(ButtonNumber button, TouchCallbackFunction f){  longClicked_cb[button] = f;}
-void setTripleClickHandler(ButtonNumber button, TouchCallbackFunction f){  tripleClicked_cb[button] = f;}
-void setReleasedHandler(ButtonNumber button, TouchCallbackFunction f){  released_cb[button] = f;}
+void setClickHandler(const ButtonNumber button, const TouchCallbackFunction &f){  clicked_cb[button] = f;}
+void setDoubleClickHandler(const ButtonNumber button, const TouchCallbackFunction &f){  doubleClicked_cb[button] = f;}
+void setLongClickHandler(const ButtonNumber button, const TouchCallbackFunction &f){  longClicked_cb[button] = f;}
+void setTripleClickHandler(const ButtonNumber button, const TouchCallbackFunction &f){  tripleClicked_cb[button] = f;}
+void setReleasedHandler(const ButtonNumber button, const TouchCallbackFunction &f){  released_cb[button] = f;}
 
 void touchDebug(Stream &terminalStream)
 {

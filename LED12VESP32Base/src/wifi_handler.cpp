@@ -21,14 +21,14 @@ char _ap_ssid_working[MAX_SSID_LEN] = {0};             // For reverting bad chan
 char _ap_passphrase_working[MAX_PASSPHRASE_LEN] = {0}; // For reverting bad changes to the AP configuration
 uint32_t _ap_ip_working = 0;                           // For reverting bad changes to the AP configuration
 uint32_t _ap_netmask_working = 0;                      // For reverting bad changes to the AP configuration
-bool _apTestChangedSettings = false;                   // Whether we have a changed AP configuration that is not tested yet
+bool _apTestChangedSettings = false;                   // Whether we have a changed AP configuration that is not tested yet. Set to true, when ssid, ip or netmask change!
 
 char _sta_ssid[MAX_SSID_LEN] = {0};             // STA will try to connect to the WiFi with this ssid
 char _sta_passphrase[MAX_PASSPHRASE_LEN] = {0}; // STA will try to connect to the WiFi with this passphrase
 
 Stream *debug_uart_wifi = nullptr;
 
-ModeResult _apModeResult = ModeResult::MODE_NOT_ATTEMPTED_YET; // Result of starting STA mode with the current ssid and passphrase. Reset to NOT_ATTEMPTED_YET when ssid and/or passphrase change!
+ModeResult _apModeResult = ModeResult::MODE_NOT_ATTEMPTED_YET; // Result of starting STA mode with the current ssid and passphrase. Reset to NOT_ATTEMPTED_YET when ssid, ip or netmask changes!
 
 // info about STA
 wifi_err_reason_t _staDisconnectReason = WIFI_REASON_UNSPECIFIED;
@@ -36,7 +36,7 @@ wifi_err_reason_t _staDisconnectReason = WIFI_REASON_UNSPECIFIED;
 bool _staConnectedAtLeastOnce = false;                          // (1) Was there at least one successful attempt to connect as STA with the current ssid and passphrase?
 bool _staConnected = false;                                     // (2) Is the device currently connected to a WiFi as STA?
 bool _staFailed = false;                                        // (3) Has an initial attempt to connect as STA with the current ssid and passphrase failed?
-ModeResult _staModeResult = ModeResult::MODE_NOT_ATTEMPTED_YET; // Result of starting STA mode with the current ssid and passphrase. Reset to NOT_ATTEMPTED_YET when ssid and/or passphrase change!
+ModeResult _staModeResult = ModeResult::MODE_NOT_ATTEMPTED_YET; // Result of starting STA mode with the current ssid and passphrase. Reset to NOT_ATTEMPTED_YET when ssid, ip or netmask change!
 /*
   connection as STA     |  (1)  |  (2)  |  (3)  |
   not in STA mode       | false | false | false |
@@ -54,6 +54,9 @@ WifiStateInfo wifiCurrentState()
   WifiStateInfo info;
   info.currentState = _wifiState;
   info.enteredStateAtTs = _wifiStateTs;
+  info.mode = _wifiMode;
+  info.apModeResult = _apModeResult;
+  info.staModeResult = _staModeResult;
   return info;
 }
 
@@ -180,7 +183,7 @@ void requestAPMode()
 }
 
 // ARDUINO_EVENT_WIFI_READY
-void wifiEventReady(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventReady(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrintln(F("WiFi interface ready"));
@@ -188,7 +191,7 @@ void wifiEventReady(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_SCAN_DONE
-void wifiEventScanDone(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventScanDone(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrint(F("Completed scan for access points (found "));
@@ -197,7 +200,7 @@ void wifiEventScanDone(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_STA_START
-void wifiEventStaStart(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventStaStart(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrintln(F("WiFi client started"));
@@ -205,7 +208,7 @@ void wifiEventStaStart(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_STA_STOP
-void wifiEventStaStop(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventStaStop(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrintln(F("WiFi client stopped"));
@@ -213,7 +216,7 @@ void wifiEventStaStop(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_STA_CONNECTED
-void wifiEventStaConnected(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventStaConnected(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   Serial.print(F("Connected to access point, ssid_len: "));
@@ -221,7 +224,7 @@ void wifiEventStaConnected(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_STA_DISCONNECTED
-void wifiEventStaDisconnected(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventStaDisconnected(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrint(F("Disconnected from WiFi access point, reason:"));
@@ -231,7 +234,7 @@ void wifiEventStaDisconnected(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_STA_AUTHMODE_CHANGE
-void wifiEventStaAuthmodeChanged(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventStaAuthmodeChanged(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrintln(F("Authentication mode of access point has changed, new mode: "));
@@ -239,7 +242,7 @@ void wifiEventStaAuthmodeChanged(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_STA_GOT_IP
-void wifiEventStaGotIP(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventStaGotIP(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrintln(F("WiFi connected, IPv4 address: "));
@@ -247,7 +250,7 @@ void wifiEventStaGotIP(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_STA_GOT_IP6
-void wifiEventStaGotIP6(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventStaGotIP6(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrintln(F("WiFi connected, IPv6 address: "));
@@ -255,7 +258,7 @@ void wifiEventStaGotIP6(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_STA_LOST_IP
-void wifiEventStaLostIP(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventStaLostIP(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrintln(F("Lost IP address, IP address is reset to 0"));
@@ -263,7 +266,7 @@ void wifiEventStaLostIP(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_AP_START
-void wifiEventApStart(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventApStart(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrintln(F("WiFi access point started"));
@@ -272,7 +275,7 @@ void wifiEventApStart(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_AP_STOP
-void wifiEventApStop(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventApStop(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrintln(F("WiFi access point stopped"));
@@ -280,7 +283,7 @@ void wifiEventApStop(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_AP_STACONNECTED
-void wifiEventApStaConnected(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventApStaConnected(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrint(F("AP: Client connected, MAC: "));
@@ -288,7 +291,7 @@ void wifiEventApStaConnected(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_AP_STADISCONNECTED
-void wifiEventApStaDisconnected(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventApStaDisconnected(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrint(F("AP: Client disconnected, MAC: "));
@@ -296,7 +299,7 @@ void wifiEventApStaDisconnected(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_AP_STAIPASSIGNED
-void wifiEventApStaIpAssigned(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventApStaIpAssigned(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrint(F("AP: Assigned IPv4 address to client: "));
@@ -304,7 +307,7 @@ void wifiEventApStaIpAssigned(WiFiEvent_t event, WiFiEventInfo_t info)
 }
 
 // ARDUINO_EVENT_WIFI_AP_PROBEREQRECVED
-void wifiEventApProbeReqRecved(WiFiEvent_t event, WiFiEventInfo_t info)
+void wifiEventApProbeReqRecved(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrint(F("AP: Received probe request, MAC: "));
@@ -348,7 +351,6 @@ WifiState handleStartStaOrAp()
     switch (_apModeResult)
     {
     case ModeResult::MODE_NOT_ATTEMPTED_YET:
-      _apTestChangedSettings;
       printWifi();
       Serial.print(F("Starting AP "));
       Serial.println(_apTestChangedSettings ? F("with changed setting") : F("for the first time since power on"));
@@ -636,13 +638,10 @@ WifiState handleApSwitchToSta()
 
 WifiState handleApSwitchWaitApDown()
 {
-  bool apIsDown = true; // found nothing to check here...
-  if (apIsDown)
-  {
-    printWifi();
-    Serial.println(F("Switching from STA to AP, AP is stopped"));
-  }
-  return apIsDown ? STA_START : AP_SWITCH_WAIT_AP_DOWN;
+  // found nothing to check here...
+  printWifi();
+  Serial.println(F("Switching from STA to AP, AP is stopped"));
+  return STA_START;
 }
 
 WifiState handleApFail()
@@ -714,9 +713,9 @@ void wifiLoop()
   switch (_wifiState)
   {
 
-  /*case UNHINGE:
-    nextState = UNHINGE;
-    break;*/
+    /*case UNHINGE:
+      nextState = UNHINGE;
+      break;*/
 
   case NO_WIFI_YET:
     nextState = handleNoWifiYet();
