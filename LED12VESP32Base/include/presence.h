@@ -3,11 +3,6 @@
 
 #include <Arduino.h>
 
-#define MONITOR_SERIAL Serial
-#define RADAR_SERIAL Serial1
-uint8_t const RADAR_RX_PIN = 33;
-uint8_t const RADAR_TX_PIN = 32;
-
 struct LD2410Firmware
 {
     bool Valid = false;

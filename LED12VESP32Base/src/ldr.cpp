@@ -1,6 +1,7 @@
-#include "ldr.h"
+#include <device_common.h>
+#include <ldr.h>
 
-uint16_t _averageBrightness = 4096;
+uint16_t _averageBrightness = MAX_BRIGHTNESS + 1; // impossible value -> not initialized
 uint32_t _measurementDelayMs = 500;
 
 unsigned long _lastMeasureTs = 0;
@@ -33,6 +34,7 @@ uint8_t ring_avg() { return _ring_avg; }
 void ldrSetup()
 {
     pinMode(LDR_PIN, INPUT);
+    _measurementDelayMs = 500;
     _averageBrightness = measuredBrightness();
 }
 

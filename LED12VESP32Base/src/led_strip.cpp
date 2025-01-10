@@ -1,5 +1,10 @@
-#include "config.h"
-#include "led_strip.h"
+#include <led_strip.h>
+#include <device_common.h>
+#include <config.h>
+
+static const uint8_t LEDC_CHANNEL_0 = 0;
+static const uint32_t LEDC_FREQ_HZ = 5000;
+static const uint8_t LEDC_RESOLUTION_BITS = 8;
 
 enum LEDStripState
 {

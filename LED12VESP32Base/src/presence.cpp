@@ -1,5 +1,6 @@
 #include <ld2410.h>
-#include "presence.h"
+#include <device_common.h>
+#include <presence.h>
 
 ld2410 radar;
 

@@ -19,7 +19,6 @@ enum State
 
 struct DeviceStateInfo
 {
-
     State state; // Current state of the device
 
     bool allowNightLightMode;           // Whether night light should be turned on when it is dark enough and presence is detected
@@ -47,5 +46,10 @@ struct DeviceStateInfo
 };
 
 DeviceStateInfo getDeviceState();
+
+void debugPrintStateText(Stream *stream, State state, bool addPrintln = false);
+
+void deviceSetup();
+void deviceLoop();
 
 #endif

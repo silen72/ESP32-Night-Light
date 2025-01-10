@@ -1,6 +1,7 @@
 #include <Button2.h>
 
-#include "touch.h"
+#include <touch.h>
+#include <device_common.h>
 
 Button2 touch1, touch2, touch3, touch4;
 
@@ -10,20 +11,28 @@ TouchCallbackFunction tripleClicked_cb[4] = {NULL};
 TouchCallbackFunction longClicked_cb[4] = {NULL};
 TouchCallbackFunction released_cb[4] = {NULL};
 
-Stream *debug_uart_touch = nullptr;				// The stream used for the debugging
+Stream *debug_uart_touch = nullptr; // The stream used for the debugging
 
 static const uint8_t LAST_BUTTON = 3;
 
 uint8_t buttonNumber(const Button2 &btn)
 {
   if (btn.getID() == touch1.getID())
+  {
     return 0;
+  }
   if (btn.getID() == touch2.getID())
+  {
     return 1;
+  }
   if (btn.getID() == touch3.getID())
+  {
     return 2;
+  }
   if (btn.getID() == touch4.getID())
+  {
     return LAST_BUTTON;
+  }
   return LAST_BUTTON + 1;
 }
 
@@ -87,7 +96,6 @@ void released(const Button2 &btn)
   }
 }
 
-
 void setupButton(const uint8_t pin, Button2 &btn)
 {
   // the touch buttons are active high
@@ -100,7 +108,7 @@ void setupButton(const uint8_t pin, Button2 &btn)
   btn.setReleasedHandler(released);
   if (debug_uart_touch != nullptr)
   {
-    
+
     debug_uart_touch->println(" Button ID:\t" + String(btn.getID()));
     debug_uart_touch->println(" Longpress Time:\t" + String(btn.getLongClickTime()) + "ms");
     debug_uart_touch->println(" DoubleClick Time:\t" + String(btn.getDoubleClickTime()) + "ms");
@@ -108,16 +116,13 @@ void setupButton(const uint8_t pin, Button2 &btn)
   }
 }
 
-void setClickHandler(const ButtonNumber button, const TouchCallbackFunction &f){  clicked_cb[button] = f;}
-void setDoubleClickHandler(const ButtonNumber button, const TouchCallbackFunction &f){  doubleClicked_cb[button] = f;}
-void setLongClickHandler(const ButtonNumber button, const TouchCallbackFunction &f){  longClicked_cb[button] = f;}
-void setTripleClickHandler(const ButtonNumber button, const TouchCallbackFunction &f){  tripleClicked_cb[button] = f;}
-void setReleasedHandler(const ButtonNumber button, const TouchCallbackFunction &f){  released_cb[button] = f;}
+void setClickHandler(const ButtonNumber button, const TouchCallbackFunction &f) { clicked_cb[button] = f; }
+void setDoubleClickHandler(const ButtonNumber button, const TouchCallbackFunction &f) { doubleClicked_cb[button] = f; }
+void setLongClickHandler(const ButtonNumber button, const TouchCallbackFunction &f) { longClicked_cb[button] = f; }
+void setTripleClickHandler(const ButtonNumber button, const TouchCallbackFunction &f) { tripleClicked_cb[button] = f; }
+void setReleasedHandler(const ButtonNumber button, const TouchCallbackFunction &f) { released_cb[button] = f; }
 
-void touchDebug(Stream &terminalStream)
-{
-  debug_uart_touch = &terminalStream;
-}
+void touchDebug(Stream &terminalStream) { debug_uart_touch = &terminalStream; }
 
 void touchSetup()
 {
@@ -135,14 +140,14 @@ void touchSetup()
   // click: decreases brighness one step
   // long:  decreases brighness one step as long as the button is pressed
   touch2.setID(1);
-  //touch2.setLongClickTime(500);
+  // touch2.setLongClickTime(500);
   setupButton(TOUCH2_PIN, touch2);
 
   // The "MORE" Button
   // click: increases brighness one step
   // long:  increases brighness one step as long as the button is pressed
   touch3.setID(2);
-  //touch3.setLongClickTime(500);
+  // touch3.setLongClickTime(500);
   setupButton(TOUCH3_PIN, touch3);
 
   // The "ON" Button
