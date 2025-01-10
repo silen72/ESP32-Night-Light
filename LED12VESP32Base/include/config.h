@@ -7,12 +7,13 @@ static const uint8_t DEFAULT_BRIGHTNESS_STEP = 8;
 static const uint16_t DEFAULT_TRANSITION_DURATION_MS = 1000;
 static const uint8_t DEFAULT_MAX_BRIGHTNESS = 210;
 static const uint8_t DEFAULT_ON_BRIGHTNESS = 210;
+
 static const uint8_t DEFAULT_NIGHTLIGHT_BRIGHTNESS = 16;
 static const uint8_t DEFAULT_MAX_NIGHTLIGHT_BRIGHTNESS = 128;
 static const bool DEFAULT_ALLOW_NIGHTLIGHT = true;
 static const uint16_t DEFAULT_LDR_NIGHTLIGHT_THRESHOLD = 30;
 static const uint16_t DEFAULT_NIGHTLIGHT_ON_DURATION_S = 30; // night light stays on for 30s, then checks if it is still needed
-static const bool DEFAULT_RESTORE_STATE_AFTER_POWERLOSS = true;
+
 static const uint16_t DEFAULT_MIN_MOVING_TARGET_DISTANCE = 0;
 static const uint16_t DEFAULT_MAX_MOVING_TARGET_DISTANCE = UINT16_MAX;
 static const uint8_t DEFAULT_MIN_MOVING_TARGET_ENERGY = 0;
@@ -21,6 +22,9 @@ static const uint16_t DEFAULT_MIN_STATIONARY_TARGET_DISTANCE = 0;
 static const uint16_t DEFAULT_MAX_STATIONARY_TARGET_DISTANCE = UINT16_MAX;
 static const uint8_t DEFAULT_MIN_STATIONARY_TARGET_ENERGY = 0;
 static const uint8_t DEFAULT_MAX_STATIONARY_TARGET_ENERGY = UINT8_MAX;
+
+static const char DEFAULT_WIFI_HOSTNAME[] = "lamp";
+static const size_t DEFAULT_WIFI_HOSTNAME_SIZE = 4;
 static const char DEFAULT_WIFI_AP_SSID[] = "esp32LEDStrip";
 static const size_t DEFAULT_WIFI_AP_SSID_SIZE = 13;
 static const char DEFAULT_WIFI_AP_PASSPHRASE[] = "";
@@ -31,6 +35,16 @@ static const char DEFAULT_WIFI_STA_SSID[] = "";
 static const size_t DEFAULT_WIFI_STA_SSID_SIZE = 0;
 static const char DEFAULT_WIFI_STA_PASSPHRASE[] = "";
 static const size_t DEFAULT_WIFI_STA_PASSPHRASE_SIZE = 0;
+
+static const char DEFAULT_MQTT_SERVER[] = "";
+static const size_t DEFAULT_MQTT_SERVER_SIZE = 0;
+static const char DEFAULT_MQTT_USER[] = "";
+static const size_t DEFAULT_MQTT_USER_SIZE = 0;
+static const char DEFAULT_MQTT_PASSWORD[] = "";
+static const size_t DEFAULT_MQTT_PASSWORD_SIZE = 0;
+
+
+static const uint8_t MAX_HOSTNAME_LEN = 32;
 
 // Get preference: Night light stays on for this many seconds, then checks if it is still needed
 uint16_t nightLightOnDuration();
@@ -81,6 +95,7 @@ void setStepBrightness(uint8_t value);
 uint16_t minStationaryTargetDistance();
 // Set preference for presence detection: A stationary target must be at least this far away from the sensor (in cm) to be considered to enable the night light
 void setMinStationaryTargetDistance(uint16_t value);
+
 // Get preference for presence detection: A stationary target must be at most this far away from the sensor (in cm) to be considered to enable the night light
 uint16_t maxStationaryTargetDistance();
 // Set preference for presence detection: A stationary target must be at most this far away from the sensor (in cm) to be considered to enable the night light
@@ -90,6 +105,7 @@ void setMaxStationaryTargetDistance(uint16_t value);
 uint8_t minStationaryTargetEnergy();
 // Set preference for presence detection: A stationary target must have at least this "energy" (confidence) (0 .. 100) to be considered to enable the night light
 void setMinStationaryTargetEnergy(uint8_t value);
+
 // Get preference for presence detection: A stationary target must have at most this "energy" (confidence) (0 .. 100) to be considered to enable the night light
 uint8_t maxStationaryTargetEnergy();
 // Set preference for presence detection: A stationary target must have at most this "energy" (confidence) (0 .. 100) to be considered to enable the night light
@@ -99,37 +115,60 @@ void setMaxStationaryTargetEnergy(uint8_t value);
 uint16_t minMovingTargetDistance();
 // Set preference for presence detection: A moving target must be at least this far away from the sensor (in cm) to be considered to enable the night light
 void setMinMovingTargetDistance(uint16_t value);
+
 // Get preference for presence detection: A moving target must be at most this far away from the sensor (in cm) to be considered to enable the night light
 uint16_t maxMovingTargetDistance();
 // Set preference for presence detection: A moving target must be at most this far away from the sensor (in cm) to be considered to enable the night light
 void setMaxMovingTargetDistance(uint16_t value);
+
 // Get preference for presence detection: A moving target must have at least this "energy" (confidence) (0 .. 100) to be considered to enable the night light
 uint8_t minMovingTargetEnergy();
 // Set preference for presence detection: A moving target must have at least this "energy" (confidence) (0 .. 100) to be considered to enable the night light
 void setMinMovingTargetEnergy(uint8_t value);
+
 // Get preference for presence detection: A moving target must have at most this "energy" (confidence) (0 .. 100) to be considered to enable the night light
 uint8_t maxMovingTargetEnergy();
 // Set preference for presence detection: A moving target must have at most this "energy" (confidence) (0 .. 100) to be considered to enable the night light
 void setMaxMovingTargetEnergy(uint8_t value);
 
-size_t getWifiApSsid(char *value, size_t maxLen);
-void setWifiApSsid(const char *value);
-size_t getifiApPassphrase(char *value, size_t maxLen);
-// A valid passphrase must have at least eight characters. Will set the value and return true when the requirement is met. Will not save the value and return false otherwise.
-bool setWifiApPassphrase(const char *value);
+// Get preference: Hostname of the lamp device 
+size_t getWifiHostname(char *value, uint8_t maxLen);
+// Set preference: Hostname of the lamp device
+void setWifiHostname(const char *value, uint8_t maxLen);
+
+// Get preference: SSID of the access point when the lamp device opens up an AP
+size_t getWifiApSsid(char *value, uint8_t maxLen);
+// Set preference: SSID of the access point when the lamp device opens up an AP
+void setWifiApSsid(const char *value, uint8_t maxLen);
+
+// Get preference: Passphrase of the access point when the lamp device opens up an AP (might be an empty string)
+size_t getWifiApPassphrase(char *value, uint8_t maxLen);
+// Set preference: Passphrase of the access point. A valid passphrase must have at least eight characters. Will set the value and return true when the requirement is met. Will not save the value and return false otherwise.
+bool setWifiApPassphrase(const char *value, uint8_t maxLen);
+
+// Get preference: IPv4 address of the access point when the lamp device opens up an AP
 uint32_t wifiApIPv4Address();
+// Set preference: IPv4 address of the access point when the lamp device opens up an AP
 void setWifiAPpIPv4Address(uint32_t value);
+
+// Get preference: IPv4 net mask of the access point when the lamp device opens up an AP
 uint32_t wifiApIPv4Netmask();
+// Set preference: IPv4 net mask of the access point when the lamp device opens up an AP
 void setWifiAPpIPv4Netmask(uint32_t value);
 
-size_t getWifiStaSsid(char *value, size_t maxLen);
-void setWifiStaSsid(const char *value);
-size_t getWifiStaPassphrase(char *value, size_t maxLen);
-void setWifiStaPassphrase(const char *value);
+// Get preference: The device will try to connect to this SSID in STAtion mode.
+size_t getWifiStaSsid(char *value, uint8_t maxLen);
+// Set preference: The device will try to connect to this SSID in STAtion mode.
+void setWifiStaSsid(const char *value, uint8_t maxLen);
 
-// configure the handling of preferences and configurations
+// Get preference: The device will try to connect to an existing WLAN with this passphrase in STAtion mode.
+size_t getWifiStaPassphrase(char *value, uint8_t maxLen);
+// Set preference: The device will try to connect to an existing WLAN with this passphrase in STAtion mode.
+void setWifiStaPassphrase(const char *value, uint8_t maxLen);
+
+// Configure the handling of preferences and configurations
 void configSetup();
-// does nothing as of yet
+// Does nothing as of yet
 void configLoop();
 
 #endif

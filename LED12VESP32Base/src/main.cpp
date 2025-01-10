@@ -2,26 +2,16 @@
 #include <WebServer.h>
 #include <Button2.h>
 
-#include "touch.h"
-#include "wifi_handler.h"
-#include "ldr.h"
-#include "led_strip.h"
-#include "config.h"
-#include "presence.h"
+#include <device_state.h>
+#include <touch.h>
+#include <wifi_handler.h>
+#include <ldr.h>
+#include <led_strip.h>
+#include <config.h>
+#include <presence.h>
+#include <webapi.h>
+#include <webinterface.h>
 
-// the states the finite state machine may be in
-enum State
-{
-  OFF,                          // Light is off. Constantly checks whether condition for night light is met. This is the default state after power on.
-  START_TRANSIT_TO_ON,          // Initialize the transition to a new brightness (> 0). The new brightness is set in _targetBrightness. Next state is TRANSIT_TO_ON.
-  TRANSIT_TO_ON,                // Gradually increases or decreases the brightness to _targetBrightness, until _targetBrightness equals the actual brightness. The next state is then ON.
-  ON,                           // Light is on at the desired brightness. This state only changes by someone touch one of the touch buttons (or power loss).
-  START_TRANSIT_TO_OFF,         // Initialiue the transition to OFF (brightness = 0). _targetBrightness is set t0 0. Next state is TRANSIT_TO_OFF.
-  TRANSIT_TO_OFF,               // Gradually decreases the brightness to 0 until the actual brightness is 0. The next state is then OFF.
-  START_TRANSIT_TO_NIGHT_LIGHT, // Initialize the transition to night light brightness. The new brightness is set in _targetBrightness. Next state is TRANSIT_TO_NIGHT_LIGHT.
-  TRANSIT_TO_NIGHT_LIGHT,       // Gradually increases or decreases the brightness to _targetBrightness, until _targetBrightness equals the actual brightness. The next state is then NIGHT_LIGHT_ON.
-  NIGHT_LIGHT_ON                // Night light is on at night light brightness. Constantly checks whether condition for night light is still met. If not, next state is START_TRANSIT_TO_OFF.
-};
 State _state = State::OFF; // initial state is always OFF -> no light
 
 bool _allowNightLightMode = true;        // Whether night light should be turned on when it is dark enough and presence is detected
@@ -913,6 +903,12 @@ void setup()
   // long click: save current choice for allowing night light mode
   setLongClickHandler(OffButton, ctrlLongClickOff);
 
+  webApiDebug(MONITOR_SERIAL);
+  webApiSetup();
+
+  webInterfaceDebug(MONITOR_SERIAL);
+  webInterfaceSetup();
+
   MONITOR_SERIAL.println(F("ESP32 LED Night Light initialized, light is OFF"));
 }
 
@@ -935,4 +931,8 @@ void loop()
   handleState();
   // set LED strip accordingly
   ledStripLoop();
+
+  webApiLoop();
+
+  webInterfaceLoop();
 }

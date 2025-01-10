@@ -31,6 +31,7 @@ static const char *PrefMinStationaryTargetEnergy = "mise";
 static const char *PrefMaxStationaryTargetEnergy = "msse";
 static const char *PrefSavedState = "sast";
 
+static const char *PrefWifiHostname = "whon";
 static const char *PrefWifiApSsid = "wass";
 static const char *PrefWifiApPassphrase = "wapa";
 static const char *PrefWifiApIpAddress = "waip";
@@ -130,16 +131,25 @@ void setMinStationaryTargetEnergy(uint8_t value) { myPrefs.putUChar(PrefMinStati
 uint8_t maxStationaryTargetEnergy() { return myPrefs.getUChar(PrefMaxStationaryTargetEnergy, DEFAULT_MAX_STATIONARY_TARGET_ENERGY); }
 void setMaxStationaryTargetEnergy(uint8_t value) { myPrefs.putUChar(PrefMaxStationaryTargetEnergy, value); }
 
-size_t getWifiApSsid(char *value, size_t maxLen)
+size_t getWifiHostname(char *value, uint8_t maxLen)
+{
+    if (myPrefs.isKey(PrefWifiHostname))
+        return myPrefs.getString(PrefWifiHostname, value, maxLen);
+    strncpy(value, DEFAULT_WIFI_HOSTNAME, maxLen);
+    return DEFAULT_WIFI_HOSTNAME_SIZE;
+}
+void setWifiHostname(const char *value, uint8_t maxLen) { myPrefs.putString(PrefWifiHostname, value); }
+
+size_t getWifiApSsid(char *value, uint8_t maxLen)
 {
     if (myPrefs.isKey(PrefWifiApSsid))
         return myPrefs.getString(PrefWifiApSsid, value, maxLen);
     strncpy(value, DEFAULT_WIFI_AP_SSID, maxLen);
     return DEFAULT_WIFI_AP_SSID_SIZE;
 }
-void setWifiApSsid(const char *value) { myPrefs.putString(PrefWifiApSsid, value); }
+void setWifiApSsid(const char *value, uint8_t maxLen) { myPrefs.putString(PrefWifiApSsid, value); }
 
-size_t getWifiApPassphrase(char *value, size_t maxLen)
+size_t getWifiApPassphrase(char *value, uint8_t maxLen)
 {
     if (myPrefs.isKey(PrefWifiApPassphrase))
         return myPrefs.getString(PrefWifiApPassphrase, value, maxLen);
@@ -162,21 +172,20 @@ void setWifiAPpIPv4Address(uint32_t value) { myPrefs.putLong(PrefWifiApIpAddress
 uint32_t wifiApIPv4Netmask() { return myPrefs.getLong(PrefWifiApNetmask, DEFAULT_WIFI_AP_NETMASK); }
 void setWifiAPpIPv4Netmask(uint32_t value) { myPrefs.putLong(PrefWifiApNetmask, value); }
 
-size_t getWifiStaSsid(char *value, size_t maxLen)
+size_t getWifiStaSsid(char *value, uint8_t maxLen)
 {
     if (myPrefs.isKey(PrefWifiStaSsid))
         return myPrefs.getString(PrefWifiStaSsid, value, maxLen);
     strncpy(value, DEFAULT_WIFI_STA_SSID, maxLen);
     return DEFAULT_WIFI_STA_SSID_SIZE;
 }
-void setWifiStaSsid(const char * value) { myPrefs.putString(PrefWifiStaSsid, value); }
+void setWifiStaSsid(const char *value, uint8_t maxLen) { myPrefs.putString(PrefWifiStaSsid, value); }
 
-size_t getWifiStaPassphrase(char *value, size_t maxLen)
+size_t getWifiStaPassphrase(char *value, uint8_t maxLen)
 {
     if (myPrefs.isKey(PrefWifiStaPassphrase))
         return myPrefs.getString(PrefWifiStaPassphrase, value, maxLen);
     strncpy(value, DEFAULT_WIFI_STA_PASSPHRASE, maxLen);
     return DEFAULT_WIFI_STA_PASSPHRASE_SIZE;
 }
-
-void setWifiStaPassphrase(const char *value) { myPrefs.putString(PrefWifiStaPassphrase, value); }
+void setWifiStaPassphrase(const char *value, uint8_t maxLen) { myPrefs.putString(PrefWifiStaPassphrase, value); }

@@ -8,10 +8,13 @@ Learned lots from https://randomnerdtutorials.com/esp32-useful-wi-fi-functions-a
 
 #include "wifi_handler.h"
 #include "config.h"
+#include <DNSServer.h>
 
 WifiState _wifiState = NO_WIFI_YET; // The state the wifi finite state machine is currently in.
 unsigned long _wifiStateTs = 0;     // The moment in time when the finite state machine entered the current _state.
 WifiMode _wifiMode = WifiMode::WifiMode_OFF;
+
+char _hostname[MAX_HOSTNAME_LEN] = {0};
 
 char _ap_ssid[MAX_SSID_LEN] = {0};                     // The currently used SSID of the AP
 char _ap_passphrase[MAX_PASSPHRASE_LEN] = {0};         // The currently used passphrase for connecting to the AP
@@ -25,6 +28,8 @@ bool _apTestChangedSettings = false;                   // Whether we have a chan
 
 char _sta_ssid[MAX_SSID_LEN] = {0};             // STA will try to connect to the WiFi with this ssid
 char _sta_passphrase[MAX_PASSPHRASE_LEN] = {0}; // STA will try to connect to the WiFi with this passphrase
+
+IPAddress _ipAddress = IPAddress((uint32_t)0);
 
 Stream *debug_uart_wifi = nullptr;
 
@@ -49,6 +54,8 @@ ModeResult _staModeResult = ModeResult::MODE_NOT_ATTEMPTED_YET; // Result of sta
 // info about AP
 bool _forceAPMode = false; // Requested by user: start in AP mode although there is a configuration for STA that worked at least once.
 
+DNSServer dnsServer; // for providing a captive portal in AP mode
+
 WifiStateInfo wifiCurrentState()
 {
   WifiStateInfo info;
@@ -57,6 +64,7 @@ WifiStateInfo wifiCurrentState()
   info.mode = _wifiMode;
   info.apModeResult = _apModeResult;
   info.staModeResult = _staModeResult;
+  info.address = _ipAddress;
   return info;
 }
 
@@ -88,9 +96,64 @@ void debugPrintMAC(const uint8_t mac[6], bool addPrintln = false)
   }
 }
 
-void debugPrintStateName(WifiState state, bool addPrintln = false)
+void debugPrintModeResult(Stream *stream, ModeResult result, bool addPrintln)
 {
-  if (debug_uart_wifi != nullptr)
+  if (stream != nullptr)
+  {
+    switch (result)
+    {
+    case ModeResult::MODE_FAIL:
+      stream->print(F("MODE_FAIL"));
+      break;
+
+    case ModeResult::MODE_NOT_ATTEMPTED_YET:
+      stream->print(F("MODE_NOT_ATTEMPTED_YET"));
+      break;
+
+    case ModeResult::MODE_SUCCESS:
+      stream->print(F("MODE_SUCCESS"));
+      break;
+
+    default:
+      stream->print(F("UNKNOWN ModeResult - THIS IS A BUG"));
+      break;
+    }
+    if (addPrintln)
+      debug_uart_wifi->println();
+  }
+}
+
+void debugPrintModeResult(ModeResult result, bool addPrintln = false) { debugPrintModeResult(debug_uart_wifi, result, addPrintln); }
+
+void debugPrintWifiMode(Stream *stream, WifiMode mode, bool addPrintln)
+{
+  if (stream != nullptr)
+  {
+    switch (mode)
+    {
+    case WifiMode::WifiMode_AP:
+      stream->print(F("WifiMode_AP"));
+      break;
+    case WifiMode::WifiMode_OFF:
+      stream->print(F("WifiMode_OFF"));
+      break;
+    case WifiMode::WifiMode_STA:
+      stream->print(F("WifiMode_STA"));
+      break;
+    default:
+      stream->print(F("UNKNOWN WifiMode - THIS IS A BUG"));
+      break;
+    }
+    if (addPrintln)
+      debug_uart_wifi->println();
+  }
+}
+
+void debugPrintWifiMode(WifiMode mode, bool addPrintln = false) { debugPrintWifiMode(debug_uart_wifi, mode, addPrintln); }
+
+void debugPrintWifiState(Stream *stream, WifiState state, bool addPrintln)
+{
+  if (stream != nullptr)
   {
     switch (state)
     {
@@ -98,63 +161,66 @@ void debugPrintStateName(WifiState state, bool addPrintln = false)
       debug_uart_wifi->print(F("UNHINGE"));
       break;*/
     case NO_WIFI_YET:
-      debug_uart_wifi->print(F("NO_WIFI_YET"));
+      stream->print(F("NO_WIFI_YET"));
       break;
     case START_STA_OR_AP:
-      debug_uart_wifi->print(F("START_STA_OR_AP"));
+      stream->print(F("START_STA_OR_AP"));
       break;
     case STA_START:
-      debug_uart_wifi->print(F("STA_START"));
+      stream->print(F("STA_START"));
       break;
     case STA_START_WAIT:
-      debug_uart_wifi->print(F("STA_START_WAIT"));
+      stream->print(F("STA_START_WAIT"));
       break;
     case STA_OK:
-      debug_uart_wifi->print(F("STA_OK"));
+      stream->print(F("STA_OK"));
       break;
     case STA_FAIL:
-      debug_uart_wifi->print(F("STA_FAIL"));
+      stream->print(F("STA_FAIL"));
       break;
     case STA_LOST_CONNECTION:
-      debug_uart_wifi->print(F("STA_LOST_CONNECTION"));
+      stream->print(F("STA_LOST_CONNECTION"));
       break;
     case STA_RECONNECT:
-      debug_uart_wifi->print(F("STA_RECONNECT"));
+      stream->print(F("STA_RECONNECT"));
       break;
     case STA_RECONNECT_WAIT:
-      debug_uart_wifi->print(F("STA_RECONNECT_WAIT"));
+      stream->print(F("STA_RECONNECT_WAIT"));
       break;
     case STA_SWITCH_TO_AP:
-      debug_uart_wifi->print(F("STA_SWITCH_TO_AP"));
+      stream->print(F("STA_SWITCH_TO_AP"));
       break;
     case STA_SWITCH_WAIT_STA_DOWN:
-      debug_uart_wifi->print(F("STA_SWITCH_WAIT_STA_DOWN"));
+      stream->print(F("STA_SWITCH_WAIT_STA_DOWN"));
       break;
     case AP_START:
-      debug_uart_wifi->print(F("AP_START"));
+      stream->print(F("AP_START"));
       break;
     case AP_START_WAIT:
-      debug_uart_wifi->print(F("AP_START_WAIT"));
+      stream->print(F("AP_START_WAIT"));
       break;
     case AP_OK:
-      debug_uart_wifi->print(F("AP_OK"));
+      stream->print(F("AP_OK"));
       break;
     case AP_SWITCH_TO_STA:
-      debug_uart_wifi->print(F("AP_SWITCH_TO_STA"));
+      stream->print(F("AP_SWITCH_TO_STA"));
       break;
     case AP_SWITCH_WAIT_AP_DOWN:
-      debug_uart_wifi->print(F("AP_SWITCH_WAIT_AP_DOWN"));
+      stream->print(F("AP_SWITCH_WAIT_AP_DOWN"));
       break;
     case AP_FAIL:
-      debug_uart_wifi->print(F("AP_FAIL"));
+      stream->print(F("AP_FAIL"));
       break;
     default:
+      stream->print(F("UNKNOWN WifiState - THIS IS A BUG"));
       break;
     }
     if (addPrintln)
       debug_uart_wifi->println();
   }
 }
+
+void debugPrintWifiState(WifiState state, bool addPrintln = false) { debugPrintWifiState(debug_uart_wifi, state, addPrintln); }
 
 void debugPrintEvent() { debugPrint(F("[Event] ")); }
 
@@ -169,9 +235,9 @@ void setState(WifiState newState)
     if (debug_uart_wifi != nullptr)
     {
       debug_uart_wifi->print(F("[WiFi] => change state from "));
-      debugPrintStateName(_wifiState);
+      debugPrintWifiState(_wifiState);
       debug_uart_wifi->print(F(" to "));
-      debugPrintStateName(newState, true);
+      debugPrintWifiState(newState, true);
     }
   }
   _wifiState = newState;
@@ -318,6 +384,9 @@ void wifiEventApProbeReqRecved(const WiFiEvent_t &event, const WiFiEventInfo_t &
 WifiState handleNoWifiYet()
 {
   WiFi.disconnect(true, false); // also turn WiFi radio off but don't erase the info about the AP to connect to as STA
+  WiFi.setHostname(_hostname);
+  _wifiMode = WifiMode::WifiMode_OFF;
+  _ipAddress = IPAddress((uint32_t)0);
   return START_STA_OR_AP;
 }
 
@@ -399,6 +468,7 @@ WifiState handleStaStart()
     Serial.print(F("no "));
   Serial.println(F("password."));
 
+  _wifiMode = WifiMode::WifiMode_STA;
   if (!WiFi.mode(WIFI_STA))
   {
     printWifi();
@@ -449,7 +519,8 @@ WifiState handleStaStartWait()
   case WL_CONNECTED:
     printWifi();
     Serial.print(F("is connected, IP address: "));
-    Serial.println(WiFi.localIP());
+    _ipAddress = WiFi.localIP();
+    Serial.println(_ipAddress);
     return STA_OK; // success
     break;
 
@@ -540,6 +611,7 @@ WifiState handleApStart()
   Serial.print(_ap_passphrase);
   Serial.println(F("'"));
 
+  _wifiMode = WifiMode::WifiMode_AP;
   bool modeResult = WiFi.mode(WIFI_AP);
   printWifi();
   if (modeResult)
@@ -556,7 +628,17 @@ WifiState handleApStart()
     if (startResult)
     {
       printWifi();
-      Serial.println(F("SoftAP started, waiting for it to finish starting."));
+      Serial.println(F("SoftAP starting"));
+      if (dnsServer.start(53, "*", WiFi.softAPIP()))
+      {
+        printWifi();
+        Serial.println(F("DNS started"));
+      }
+      else
+      {
+        printWifi();
+        Serial.println(F("DNS NOT started!"));
+      }
       return AP_START_WAIT;
     }
     Serial.println(F("Could not start softAP."));
@@ -607,12 +689,14 @@ WifiState handleApStartWait()
         getWifiApSsid(savedSsid, sizeof(savedSsid));
         if (strncmp(_ap_ssid, savedSsid, sizeof(savedSsid)) != 0)
         {
-          setWifiApSsid(_ap_ssid);
+          setWifiApSsid(_ap_ssid, sizeof(_ap_ssid_working));
         }
         _apTestChangedSettings = false;
       }
       printWifi();
-      Serial.println(F("AP is now available."));
+      Serial.print(F("AP is now available, IP: "));
+      _ipAddress = WiFi.softAPIP();
+      Serial.println(_ipAddress);
       return AP_OK;
     }
     Serial.println(F("Could not set AP configuration"));
@@ -661,8 +745,6 @@ WifiState handleApFail()
 
 */
 
-WiFiServer server(80);
-
 void wifiSetup()
 {
   _wifiStateTs = millis();
@@ -670,6 +752,7 @@ void wifiSetup()
   getWifiApSsid(_ap_ssid, sizeof(_ap_ssid));
   strncpy(_ap_ssid_working, _ap_ssid, sizeof(_ap_ssid_working));
   getWifiStaPassphrase(_ap_passphrase, sizeof(_ap_passphrase));
+  getWifiHostname(_hostname, sizeof(_hostname));
   strncpy(_ap_passphrase_working, _ap_passphrase, sizeof(_ap_passphrase_working));
   _ap_ip = wifiApIPv4Address();
   _ap_ip_working = _ap_ip;
@@ -770,6 +853,7 @@ void wifiLoop()
     break;
 
   case AP_OK:
+    dnsServer.processNextRequest(); // for captive portal
     nextState = handleApOk();
     break;
 

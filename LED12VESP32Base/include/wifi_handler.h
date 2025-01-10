@@ -48,12 +48,16 @@ struct WifiStateInfo
     ModeResult apModeResult;
     ModeResult staModeResult;
     WifiState currentState;
+    IPAddress address;
     unsigned long enteredStateAtTs;
 };
 
 WifiStateInfo wifiCurrentState();
 
 void wifiDebug(Stream &terminalStream);
+void debugPrintModeResult(Stream *stream, ModeResult result, bool addPrintln = false);
+void debugPrintWifiState(Stream *stream, WifiState state, bool addPrintln = false);
+void debugPrintWifiMode(Stream *stream, WifiMode mode, bool addPrintln = false);
 
 void requestAPMode();
 
