@@ -14,13 +14,6 @@
 #include <webapi.h>
 #include <webinterface.h>
 
-DeviceStateInfo getDeviceState()
-{
-  DeviceStateInfo info;
-
-  return info;
-}
-
 State _state = State::OFF; // initial state is always OFF -> no light
 
 bool _allowNightLightMode = true;        // Whether night light should be turned on when it is dark enough and presence is detected
@@ -33,6 +26,10 @@ uint8_t _maxBrightness = 0;              // Maximum allowed brightness
 uint8_t _stepBrightness = 0;             // Brightness will be in/decreased by this step value
 uint8_t _targetBrightness = 0;           // The target brightness. When it differs from the actual brightness, the actual brightness will be gradually modified to be equal.
 bool _ignoreMinusLongClick = false;      // To avoid unintentionally decreasing the night light brightness after decreasing regular brightness.
+
+unsigned long _lastTripleClickTs = 0;
+uint8_t _factoryResetCount = 0;
+uint8_t _forceApModeCount = 0;
 
 uint16_t _transitionDurationMs = 0; // A smooth transition between the current and a target brightness will be finished within this duration.
 
@@ -270,28 +267,34 @@ bool isDarkEnoughForNightLight()
   return _ldrValue <= _nightLightThreshold;
 }
 
+bool isMovingTargetDetected()
+{
+  if (!_prsInfo.movingTargetDetected)
+    return false;
+  uint16_t dist = _prsInfo.movingTargetDistance;
+  uint8_t energy = _prsInfo.movingTargetEnergy;
+  return dist <= _maxMovingTargetDistance &&
+         dist >= _minMovingTargetDistance &&
+         energy <= _maxMovingTargetEnergy &&
+         energy >= _minMovingTargetEnergy;
+}
+
+bool isStationaryTargetDetected()
+{
+  if (!_prsInfo.stationaryTargetDetected)
+    return false;
+  uint16_t dist = _prsInfo.stationaryTargetDistance;
+  uint8_t energy = _prsInfo.stationaryTargetEnergy;
+  return dist <= _maxStationaryTargetDistance &&
+         dist >= _minStationaryTargetDistance &&
+         energy <= _maxStationaryTargetEnergy &&
+         energy >= _minStationaryTargetEnergy;
+}
+
 // Checks whether presence has been detected within the preferred confinements
 bool isPresenceDetected()
 {
-  if (_prsInfo.presenceDetected)
-  {
-    if (_prsInfo.movingTargetDetected)
-    {
-      uint16_t dist = _prsInfo.movingTargetDistance;
-      uint8_t energy = _prsInfo.movingTargetEnergy;
-      if (dist <= _maxMovingTargetDistance && dist >= _minMovingTargetDistance && energy <= _maxMovingTargetEnergy && energy >= _minMovingTargetEnergy)
-        return true;
-    }
-
-    if (_prsInfo.stationaryTargetDetected)
-    {
-      uint16_t dist = _prsInfo.stationaryTargetDistance;
-      uint8_t energy = _prsInfo.stationaryTargetEnergy;
-      if (dist <= _maxStationaryTargetDistance && dist >= _minStationaryTargetDistance && energy <= _maxStationaryTargetEnergy && energy >= _minStationaryTargetEnergy)
-        return true;
-    }
-  }
-  return false;
+  return (_prsInfo.presenceDetected && (isMovingTargetDetected() || isStationaryTargetDetected()));
 }
 
 // Checks whether the night light should actually switched on.
@@ -529,6 +532,85 @@ void ctrlLongClickPlus(uint8_t btn)
   handlePlus(btn);
 }
 
+void ctrlTripleClick(ButtonNumber btnn)
+{
+  debugButtonAndState(btnn, triple_click);
+
+  // reset counter when last triple click was too long ago
+  auto now = millis();
+  if (now - _lastTripleClickTs > 2000)
+  {
+    if ((_factoryResetCount > 0 || _forceApModeCount > 0) && _debugUartMain != nullptr)
+    {
+      _debugUartMain->println(F("Resetting triple click counter."));
+    }
+    _factoryResetCount = 0;
+    _forceApModeCount = 0;
+  }
+
+  // detect sequence for factory reset
+  //  1.) triple click on OFF
+  //  2.) triple click on PLUS
+  //  3.) triple click on MINUS
+  //  4.) triple click on MINUS
+  bool isFactoryReset =
+      ((_factoryResetCount == 0) && (btnn == OffButton)) ||
+      ((_factoryResetCount == 1) && (btnn == PlusButton)) ||
+      ((_factoryResetCount == 2) && (btnn == MinusButton)) ||
+      ((_factoryResetCount == 3) && (btnn == MinusButton));
+
+  // detect sequence for forced AP mode
+  //  1.) triple click on PLUS
+  //  2.) triple click on MINUS
+  //  3.) triple click on PLUS
+  bool isForceAp = !isFactoryReset && (((_forceApModeCount == 0) && (btnn == PlusButton)) ||
+                                       ((_forceApModeCount == 1) && (btnn == MinusButton)) ||
+                                       ((_forceApModeCount == 2) && (btnn == PlusButton)));
+
+  _factoryResetCount = isFactoryReset ? _factoryResetCount + 1 : 0; // advance or reset
+  if (isFactoryReset && _debugUartMain != nullptr)
+  {
+    _debugUartMain->print(F(" => Factory reset count increased to "));
+    _debugUartMain->print(_factoryResetCount);
+    _debugUartMain->println(F(" of 4"));
+    _forceApModeCount = 0;
+  }
+
+  _forceApModeCount = isForceAp ? _forceApModeCount + 1 : 0; // advance or reset
+  if (isForceAp && _debugUartMain != nullptr)
+  {
+    _debugUartMain->print(F(" => Force AP count increased to "));
+    _debugUartMain->print(_forceApModeCount);
+    _debugUartMain->println(F(" of 3"));
+    _factoryResetCount = 0;
+  }
+
+  if (_factoryResetCount == 4)
+  {
+    if (_debugUartMain != nullptr)
+    {
+      _debugUartMain->println(F("Factory reset. Device will restart."));
+    }
+    factoryReset();
+    ESP.restart();
+  }
+  if (_forceApModeCount == 3)
+  {
+    if (_debugUartMain != nullptr)
+    {
+      _debugUartMain->println(F("Forcing AP mode."));
+    }
+    confirmViaLEDStrip();
+    requestAPMode();
+  }
+
+  _lastTripleClickTs = isFactoryReset || isForceAp ? now : 0;
+}
+
+void ctrlTripleClickPlus(uint8_t btn) { ctrlTripleClick(PlusButton); }
+void ctrlTripleClickMinus(uint8_t btn) { ctrlTripleClick(MinusButton); }
+void ctrlTripleClickOff(uint8_t btn) { ctrlTripleClick(OffButton); }
+
 // ----------------------
 // ---- MINUS button ----
 // ----------------------
@@ -714,6 +796,38 @@ void ctrlLongClickOff(int8_t btn)
   confirmViaLEDStrip();
 }
 
+DeviceStateInfo getDeviceState()
+{
+  DeviceStateInfo info;
+  info.allowNightLightMode = _allowNightLightMode;
+  info.ldrValue = _ldrValue;
+  info.maxBrightness = _maxBrightness;
+  info.maxNightLightBrightness = _maxNightLightBrightness;
+  info.movingTargetDetected = isMovingTargetDetected();
+  info.movingTargetDistance = _prsInfo.movingTargetDistance;
+  info.movingTargetEnergy = _prsInfo.movingTargetEnergy;
+  info.nightLightBrightness = _nightLightBrightness;
+  info.nightLightOnDuration = _nightLightOnDuration;
+  info.nightLightThreshold = _nightLightThreshold;
+  info.onBrightness = _onBrightness;
+  info.state = _state;
+  info.stationaryTargetDetected = isStationaryTargetDetected();
+  info.stationaryTargetDistance = _prsInfo.stationaryTargetDistance;
+  info.stationaryTargetEnergy = _prsInfo.stationaryTargetEnergy;
+  info.stepBrightness = _stepBrightness;
+  info.brightness = _targetBrightness;
+  info.transitionDurationMs = _transitionDurationMs;
+
+  info.presenceDetected = info.movingTargetDetected && info.stationaryTargetDetected;
+  return info;
+}
+
+/*
+
+  State handlers
+
+ */
+
 // When the lamp is off or turning off: check whether the night light should be switched on.
 State nightLightCheckOff()
 {
@@ -894,6 +1008,8 @@ void deviceSetup()
   setClickHandler(PlusButton, ctrlClickPlus);
   // long click: increase brightness one step as long as the button is pressed
   setLongClickHandler(PlusButton, ctrlLongClickPlus);
+  // triple click: detect 'force AP' and 'factory reset' command
+  setTripleClickHandler(PlusButton, ctrlTripleClickPlus);
 
   // --- MINUS button ---
   // normal click: decrease brightness one step
@@ -902,6 +1018,8 @@ void deviceSetup()
   setLongClickHandler(MinusButton, ctrlLongClickMinus);
   // release: correctly handle decreasing brightness
   setReleasedHandler(MinusButton, ctrlReleasedMinus);
+  // triple click: detect 'force AP' and 'factory reset' command
+  setTripleClickHandler(MinusButton, ctrlTripleClickMinus);
 
   // --- OFF button ---
   // normal click: switch LED strip off
@@ -910,6 +1028,8 @@ void deviceSetup()
   setDoubleClickHandler(OffButton, ctrlDblClickOff);
   // long click: save current choice for allowing night light mode
   setLongClickHandler(OffButton, ctrlLongClickOff);
+  // triple click: detect 'force AP' and 'factory reset' command
+  setTripleClickHandler(OffButton, ctrlTripleClickOff);
 
   webApiDebug(MONITOR_SERIAL);
   webApiSetup();

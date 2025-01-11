@@ -22,14 +22,13 @@ struct DeviceStateInfo
     State state; // Current state of the device
 
     bool allowNightLightMode;           // Whether night light should be turned on when it is dark enough and presence is detected
-    unsigned long nightLightEnabledTs;  // Timestamp, when night light was switched on
     unsigned long nightLightOnDuration; // The duration the night light stays on even when presence is no longer detected
     uint8_t nightLightBrightness;       // Night light will be set to this brightness when enabled
     uint8_t maxNightLightBrightness;    // Maximum allowed night light brightness
     uint8_t onBrightness;               // Light will be set to this brightness when enabled
     uint8_t maxBrightness;              // Maximum allowed brightness
     uint8_t stepBrightness;             // Brightness will be in/decreased by this step value
-    uint8_t targetBrightness;           // The target brightness. When it differs from the actual brightness, the actual brightness will be gradually modified to be equal.
+    uint8_t brightness;                 // The target brightness. When it differs from the actual brightness, the actual brightness will be gradually modified to be equal.
 
     uint16_t transitionDurationMs; // A smooth transition between the current and a target brightness will be finished within this duration.
 

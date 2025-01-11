@@ -5,7 +5,6 @@ void setup()
   deviceSetup();
 }
 
-
 void loop()
 {
   deviceLoop();

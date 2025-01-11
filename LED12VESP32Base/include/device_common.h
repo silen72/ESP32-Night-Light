@@ -3,7 +3,6 @@
 
 #include <Arduino.h>
 
-
 #define MONITOR_SERIAL Serial
 
 // LDR is connected to GPIO36 / VP

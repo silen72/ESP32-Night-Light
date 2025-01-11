@@ -1,10 +1,11 @@
 #include <webinterface.h>
 #include <wifi_handler.h>
+#include <device_state.h>
 
 Stream *debug_uart_web_api = nullptr;
 
 const char index_html[] = PROGMEM R"rawliteral(
-<!doctypehtml><title>ESP32 LED Strip Captive Portal</title><meta content="width=device-width,initial-scale=1"name="viewport"><link href="data:,"rel="icon"><style>html{font-family:Arial;display:inline-block;text-align:center}h1{font-size:2rem;color:#fae1d2}h2{font-size:1.5rem;color:#fae1d2}p{font-size:1.2rem;color:#e1e1e1}body{max-width:600px;margin:0 auto;padding-bottom:25px;background-color:#133592}.switch{position:relative;display:inline-block;width:120px;height:68px}.switch input{display:none}.slider{position:absolute;top:0;left:0;right:0;bottom:0;background-color:#ccc;border-radius:6px}.slider:before{position:absolute;content:"";height:52px;width:52px;left:8px;bottom:8px;background-color:#fff;-webkit-transition:.4s;transition:.4s;border-radius:3px}input:checked+.slider{background-color:#b30000}input:checked+.slider:before{-webkit-transform:translateX(52px);-ms-transform:translateX(52px);transform:translateX(52px)}</style><h1>ESP32 LED Strip</h1><h2>Light is %LIGHT_STATE% (%LIGHT_BRIGHT%%)</h2><h2>Night Light is %NIGHT_LIGHT_STATE% (%NIGHT_LIGHT_BRIGHT%%)</h2><p>LDR: %LDR%<p>Presence (motion): %PRES_MOT%<p>Presence (stationary): %PRES_STAT%</p></body></html>
+<!doctypehtml><title>ESP32 LED Strip Captive Portal</title><meta content="width=device-width,initial-scale=1"name="viewport"><link href="data:,"rel="icon"><style>html{font-family:Arial;display:inline-block;text-align:center}h1{font-size:2rem;color:#fae1d2}h2{font-size:1.5rem;color:#fae1d2}p{font-size:1.2rem;color:#e1e1e1}body{max-width:600px;margin:0 auto;padding-bottom:25px;background-color:#133592}.switch{position:relative;display:inline-block;width:120px;height:68px}.switch input{display:none}.slider{position:absolute;top:0;left:0;right:0;bottom:0;background-color:#ccc;border-radius:6px}.slider:before{position:absolute;content:"";height:52px;width:52px;left:8px;bottom:8px;background-color:#fff;-webkit-transition:.4s;transition:.4s;border-radius:3px}input:checked+.slider{background-color:#b30000}input:checked+.slider:before{-webkit-transform:translateX(52px);-ms-transform:translateX(52px);transform:translateX(52px)}</style><h1>ESP32 LED Strip</h1><h2>Light is %LIGHT_STATE% ( %LIGHT_BRIGHT% )</h2><h2>Night Light is %NIGHT_LIGHT_STATE% ( %NIGHT_LIGHT_BRIGHT% )</h2><p>LDR: %LDR%<p>Motion: %PRES_MOT%<p>distance: %PRES_MOT_DIST%<p>energy: %PRES_MOT_ENER%<p>Presence (stationary): %PRES_STAT%<p>distance: %PRES_STAT_DIST%<p>energy: %PRES_STAT_ENER%
 )rawliteral";
 
 String localIPURL()
@@ -16,35 +17,56 @@ String localIPURL()
 void webInterfaceDebug(Stream &terminalStream) { debug_uart_web_api = &terminalStream; }
 
 // AwsTemplateProcessor
-String processor(const String& var)
+String processor(const String &var)
 {
-  if(var == "LIGHT_STATE")
-  {
 
-  }
-  if(var == "LIGHT_BRIGHT")
-  {
+  DeviceStateInfo info = getDeviceState();
+  bool isOn = info.state == State::START_TRANSIT_TO_ON || info.state == State::TRANSIT_TO_ON || info.state == State::ON;
+  bool isNightLightOn = !isOn && (info.state == State::START_TRANSIT_TO_NIGHT_LIGHT || info.state == State::TRANSIT_TO_NIGHT_LIGHT || info.state == State::NIGHT_LIGHT_ON);
 
-  }
-  if(var == "NIGHT_LIGHT_STATE")
+  if (var == "LIGHT_STATE")
   {
-
+    return isOn ? "ON" : "OFF";
   }
-  if(var == "NIGHT_LIGHT_BRIGHT")
+  if (var == "LIGHT_BRIGHT")
   {
-
+    return isOn ? String(info.onBrightness) : "0";
   }
-  if(var == "LDR")
+  if (var == "NIGHT_LIGHT_STATE")
   {
-
+    return String(isNightLightOn ? "ON" : "OFF") + String(isNightLightOn ? "" : String(info.allowNightLightMode ? " (enabled)" : " (disabled)"));
   }
-  if(var == "PRES_MOT")
+  if (var == "NIGHT_LIGHT_BRIGHT")
   {
-
+    return isNightLightOn ? String(info.nightLightBrightness) : "0";
   }
-  if(var == "PRES_STAT")
+  if (var == "LDR")
   {
-    
+    return String(info.ldrValue);
+  }
+  if (var == "PRES_MOT")
+  {
+    return info.movingTargetDetected ? "YES" : "NO";
+  }
+  if (var == "PRES_MOT_DIST")
+  {
+    return String(info.movingTargetDistance);
+  }
+  if (var == "PRES_MOT_ENER")
+  {
+    return String(info.movingTargetEnergy);
+  }
+  if (var == "PRES_STAT")
+  {
+    return info.stationaryTargetDetected ? "YES" : "NO";
+  }
+  if (var == "PRES_STAT_DIST")
+  {
+    return String(info.stationaryTargetDistance);
+  }
+  if (var == "PRES_STAT_ENER")
+  {
+    return String(info.stationaryTargetEnergy);
   }
   return String();
 }
@@ -73,7 +95,7 @@ void toMainPage(AsyncWebServerRequest *request)
 {
   Serial.println(F("Serve Basic HTML Page: start"));
   AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", index_html, processor);
-  response->addHeader("Cache-Control", "public,max-age=2000");  // save this file to cache for 1 year = 31536000 (unless you refresh)
+  response->addHeader("Cache-Control", "public,max-age=2000"); // save this file to cache for 1 year = 31536000 (unless you refresh)
   request->send(response);
   Serial.println(F("Serve Basic HTML Page: done"));
 }

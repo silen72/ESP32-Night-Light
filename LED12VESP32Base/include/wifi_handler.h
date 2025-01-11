@@ -6,9 +6,9 @@
 // The WiFi mode the device is supposed to be in
 enum WifiMode
 {
-    WifiMode_OFF,   // WiFi is switched off. Should be seem only directly after power on and in between mode changes.
-    WifiMode_AP,    // The device serves as an Access Point. Normally only after the very first power on. Can be requested via control unit.
-    WifiMode_STA    // The device is (or at least trying to be) connected to a WiFi.
+    WifiMode_OFF, // WiFi is switched off. Should be seem only directly after power on and in between mode changes.
+    WifiMode_AP,  // The device serves as an Access Point. Normally only after the very first power on. Can be requested via control unit.
+    WifiMode_STA  // The device is (or at least trying to be) connected to a WiFi.
 };
 
 // The result of trying to start the WifiMode
@@ -21,7 +21,7 @@ enum ModeResult
 
 enum WifiState
 {
-    //UNHINGE,                  // DEBUG: stop at this state
+    // UNHINGE,                  // DEBUG: stop at this state
     NO_WIFI_YET,              // No connection attempt has been made yet. This is the initial state of the device. Next state is START_STA_OR_AP.
     START_STA_OR_AP,          // Decide whether to start WiFi as STAtion or as Access Point (depending on configuration). Next state is either STA_START or AP_START.
     STA_START,                // Start WiFi as STAtion. Next state is STA_START_WAIT.

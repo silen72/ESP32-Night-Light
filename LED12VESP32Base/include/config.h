@@ -166,6 +166,8 @@ size_t getWifiStaPassphrase(char *value, uint8_t maxLen);
 // Set preference: The device will try to connect to an existing WLAN with this passphrase in STAtion mode.
 void setWifiStaPassphrase(const char *value, uint8_t maxLen);
 
+void factoryReset();
+
 // Configure the handling of preferences and configurations
 void configSetup();
 // Does nothing as of yet

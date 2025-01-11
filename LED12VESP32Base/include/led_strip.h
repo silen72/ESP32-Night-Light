@@ -6,17 +6,20 @@
 void ledStripSetup();
 void ledStripLoop();
 
-// 
+// Query the brightness the LED strip is supposed to have.
 uint8_t ledStripTargetBrightness();
+// Query the brightness the LED strip currently has.
 uint8_t ledStripCurrentBrightness();
 
-
-// set a new target brightness value
+// Set a new target brightness value.
 void ledStripSetTargetBrightness(uint8_t brightness);
 
-// give a visual confirmation via the LED strip
+// Gives a visual confirmation via the LED strip (two short off-on-pulses).
+// Can also visualize "on" or "off" after the two blinks. Set alsoConfirmState to true for this and set alsoConfirmState.
+// The latter controls whether it show a brief "on" period or a short "off" period.
 void ledStripConfirm(bool alsoConfirmState = false, bool confirmThisState = false);
 
+// Debug messages get printed to this stream. Do not set it if you don't want debug messages.
 void ledStripDebug(Stream &terminalStream);
 
 #endif

@@ -7,12 +7,11 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 
-AsyncWebServer getWebServer();
-
 void webApiDebug(Stream &terminalStream);
+
+AsyncWebServer getWebServer();
 
 void webApiSetup();
 void webApiLoop();
-
 
 #endif

@@ -245,8 +245,41 @@ void setState(WifiState newState)
 
 void requestAPMode()
 {
-  _forceAPMode = true;
+  switch (_wifiState)
+  {
+  case WifiState::AP_FAIL:
+  case WifiState::AP_OK:
+  case WifiState::AP_START:
+  case WifiState::AP_START_WAIT:
+  case WifiState::STA_SWITCH_TO_AP:
+  case WifiState::NO_WIFI_PERM:
+  case WifiState::NO_WIFI_YET:
+  case WifiState::STA_SWITCH_WAIT_STA_DOWN:
+    if (debug_uart_wifi != nullptr)
+    {
+      debug_uart_wifi->print(F("requestAPMode in state "));
+      debugPrintWifiState(_wifiState);
+      debug_uart_wifi->println(F(": ignored"));
+    }
+    return;
+  case WifiState::STA_FAIL:
+  case WifiState::STA_LOST_CONNECTION:
+  case WifiState::STA_OK:
+  case WifiState::STA_RECONNECT:
+  case WifiState::STA_RECONNECT_WAIT:
+  case WifiState::STA_START:
+  case WifiState::STA_START_WAIT:
+  case WifiState::START_STA_OR_AP:
+    _forceAPMode = true;
+    setState(WifiState::STA_SWITCH_TO_AP);
+  }
 }
+
+/*
+
+  event handler
+
+*/
 
 // ARDUINO_EVENT_WIFI_READY
 void wifiEventReady(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
@@ -297,6 +330,7 @@ void wifiEventStaDisconnected(const WiFiEvent_t &event, const WiFiEventInfo_t &i
   // info.wifi_sta_disconnected.reason is a uint8_t, wifi_err_reason_t is an enum with a max number of 209 -> conversion should be save
   wifi_err_reason_t reason_t = (wifi_err_reason_t)info.wifi_sta_disconnected.reason;
   debugPrintln(WiFi.disconnectReasonName(reason_t));
+  setState(WifiState::STA_LOST_CONNECTION);
 }
 
 // ARDUINO_EVENT_WIFI_STA_AUTHMODE_CHANGE
@@ -379,6 +413,12 @@ void wifiEventApProbeReqRecved(const WiFiEvent_t &event, const WiFiEventInfo_t &
   debugPrint(F("AP: Received probe request, MAC: "));
   debugPrintMAC(info.wifi_ap_probereqrecved.mac, true);
 }
+
+/*
+
+  state handler
+
+*/
 
 // Initialize Wifi to off
 WifiState handleNoWifiYet()
@@ -738,10 +778,7 @@ WifiState handleApFail()
 
 /*
 
-
-
-
-
+  setup and loop
 
 */
 

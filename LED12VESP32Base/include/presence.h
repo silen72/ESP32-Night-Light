@@ -18,8 +18,8 @@ struct LD2410Config
     uint8_t max_moving_gate = 0;
     uint8_t max_stationary_gate = 0;
     uint16_t sensor_idle_time = 0;
-    uint8_t motion_sensitivity[9] = {0,0,0,0,0,0,0,0,0};
-    uint8_t stationary_sensitivity[9] = {0,0,0,0,0,0,0,0,0};
+    uint8_t motion_sensitivity[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+    uint8_t stationary_sensitivity[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 };
 
 struct LD2410Detection

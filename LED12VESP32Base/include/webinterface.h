@@ -6,7 +6,6 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 
-
 void webInterfaceDebug(Stream &terminalStream);
 
 void webInterfaceSetup();
