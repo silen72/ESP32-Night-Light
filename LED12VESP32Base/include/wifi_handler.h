@@ -21,7 +21,6 @@ enum ModeResult
 
 enum WifiState
 {
-    // UNHINGE,                  // DEBUG: stop at this state
     NO_WIFI_YET,              // No connection attempt has been made yet. This is the initial state of the device. Next state is START_STA_OR_AP.
     START_STA_OR_AP,          // Decide whether to start WiFi as STAtion or as Access Point (depending on configuration). Next state is either STA_START or AP_START.
     STA_START,                // Start WiFi as STAtion. Next state is STA_START_WAIT.
@@ -58,6 +57,12 @@ void wifiDebug(Stream &terminalStream);
 void debugPrintModeResult(Stream *stream, ModeResult result, bool addPrintln = false);
 void debugPrintWifiState(Stream *stream, WifiState state, bool addPrintln = false);
 void debugPrintWifiMode(Stream *stream, WifiMode mode, bool addPrintln = false);
+
+void modifyApPassphrase(const String &value);
+void modifyApSsid(const String &value);
+void modifyHostname(const String &value);
+void modifyStaPassphrase(const String &value);
+void modifyStaSsid(const String &value);
 
 void requestAPMode();
 

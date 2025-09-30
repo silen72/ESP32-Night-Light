@@ -14,20 +14,27 @@ WifiState _wifiState = NO_WIFI_YET; // The state the wifi finite state machine i
 unsigned long _wifiStateTs = 0;     // The moment in time when the finite state machine entered the current _state.
 WifiMode _wifiMode = WifiMode::WifiMode_OFF;
 
-char _hostname[MAX_HOSTNAME_LEN] = {0};
+// char _hostname[MAX_HOSTNAME_LEN] = {0};
+// char _ap_ssid[MAX_SSID_LEN] = {0}; // The currently used SSID of the AP
+// char _ap_ssid_working[MAX_SSID_LEN] = {0}; // For reverting bad changes to the AP configuration
+// char _ap_passphrase[MAX_PASSPHRASE_LEN] = {0};
+// char _ap_passphrase_working[MAX_PASSPHRASE_LEN] = {0}; // For reverting bad changes to the AP configuration
+// char _sta_ssid[MAX_SSID_LEN] = {0};             // STA will try to connect to the WiFi with this ssid
+// char _sta_passphrase[MAX_PASSPHRASE_LEN] = {0}; // STA will try to connect to the WiFi with this passphrase
 
-char _ap_ssid[MAX_SSID_LEN] = {0};                     // The currently used SSID of the AP
-char _ap_passphrase[MAX_PASSPHRASE_LEN] = {0};         // The currently used passphrase for connecting to the AP
-uint32_t _ap_ip = 0;                                   // The currently used IP address of the AP
-uint32_t _ap_netmask = 0;                              // The currently used netmask of the AP
-char _ap_ssid_working[MAX_SSID_LEN] = {0};             // For reverting bad changes to the AP configuration
-char _ap_passphrase_working[MAX_PASSPHRASE_LEN] = {0}; // For reverting bad changes to the AP configuration
-uint32_t _ap_ip_working = 0;                           // For reverting bad changes to the AP configuration
-uint32_t _ap_netmask_working = 0;                      // For reverting bad changes to the AP configuration
-bool _apTestChangedSettings = false;                   // Whether we have a changed AP configuration that is not tested yet. Set to true, when ssid, ip or netmask change!
+String _hostname;
+String _ap_ssid;                     // The currently used SSID of the AP
+String _ap_ssid_working;             // For reverting bad changes to the AP configuration
+String _ap_passphrase;               // The currently used passphrase for connecting to the AP
+String _ap_passphrase_working;       // For reverting bad changes to the AP configuration
+uint32_t _ap_ip = 0;                 // The currently used IP address of the AP
+uint32_t _ap_netmask = 0;            // The currently used netmask of the AP
+uint32_t _ap_ip_working = 0;         // For reverting bad changes to the AP configuration
+uint32_t _ap_netmask_working = 0;    // For reverting bad changes to the AP configuration
+bool _apTestChangedSettings = false; // Whether we have a changed AP configuration that is not tested yet. Set to true, when ssid, ip or netmask change!
 
-char _sta_ssid[MAX_SSID_LEN] = {0};             // STA will try to connect to the WiFi with this ssid
-char _sta_passphrase[MAX_PASSPHRASE_LEN] = {0}; // STA will try to connect to the WiFi with this passphrase
+String _sta_ssid;       // STA will try to connect to the WiFi with this ssid
+String _sta_passphrase; // STA will try to connect to the WiFi with this passphrase
 
 IPAddress _ipAddress = IPAddress((uint32_t)0);
 
@@ -157,9 +164,6 @@ void debugPrintWifiState(Stream *stream, WifiState state, bool addPrintln)
   {
     switch (state)
     {
-    /*case UNHINGE:
-      debug_uart_wifi->print(F("UNHINGE"));
-      break;*/
     case NO_WIFI_YET:
       stream->print(F("NO_WIFI_YET"));
       break;
@@ -275,6 +279,12 @@ void requestAPMode()
   }
 }
 
+void modifyApPassphrase(const String &value) { _ap_passphrase = value; }
+void modifyApSsid(const String &value) { _ap_ssid = value; }
+void modifyHostname(const String &value) { _hostname = value; }
+void modifyStaPassphrase(const String &value) { _sta_passphrase = value; }
+void modifyStaSsid(const String &value) { _sta_ssid = value; }
+
 /*
 
   event handler
@@ -354,7 +364,7 @@ void wifiEventStaGotIP6(const WiFiEvent_t &event, const WiFiEventInfo_t &info)
 {
   debugPrintEvent();
   debugPrintln(F("WiFi connected, IPv6 address: "));
-  debugPrintln(IPv6Address(info.got_ip6.ip6_info.ip.addr));
+  //FixMe debugPrintln(IPv6Address(info.got_ip6.ip6_info.ip.addr));
 }
 
 // ARDUINO_EVENT_WIFI_STA_LOST_IP
@@ -424,7 +434,7 @@ void wifiEventApProbeReqRecved(const WiFiEvent_t &event, const WiFiEventInfo_t &
 WifiState handleNoWifiYet()
 {
   WiFi.disconnect(true, false); // also turn WiFi radio off but don't erase the info about the AP to connect to as STA
-  WiFi.setHostname(_hostname);
+  WiFi.setHostname(_hostname.c_str());
   _wifiMode = WifiMode::WifiMode_OFF;
   _ipAddress = IPAddress((uint32_t)0);
   return START_STA_OR_AP;
@@ -436,7 +446,7 @@ WifiState handleStartStaOrAp()
   Serial.println(F("Deciding whether to start AP or to connect to a WiFi as STAtion"));
 
   bool staFailed = _staModeResult == ModeResult::MODE_FAIL;
-  bool staSsidNotConfigured = (0 == strlen(_sta_ssid));
+  bool staSsidNotConfigured = _sta_ssid.isEmpty();
   if (_forceAPMode || staFailed || staSsidNotConfigured)
   {
     if (_forceAPMode)
@@ -482,7 +492,7 @@ WifiState handleStartStaOrAp()
       _ap_ip = _ap_ip_working;
       _ap_netmask = _ap_netmask_working;
       //_ap_passphrase = _ap_passphrase_working;
-      strncpy(_ap_ssid, _ap_ssid_working, sizeof(_ap_ssid));
+      _ap_ssid = _ap_ssid_working;
       // Try again in next loop cycle
       _apModeResult = ModeResult::MODE_NOT_ATTEMPTED_YET;
       return AP_START;
@@ -504,7 +514,7 @@ WifiState handleStaStart()
   Serial.print(F("Started connecting to WiFi "));
   Serial.print(_sta_ssid);
   Serial.print(F(" and "));
-  if (0 == strlen(_sta_passphrase))
+  if (_sta_passphrase.isEmpty())
     Serial.print(F("no "));
   Serial.println(F("password."));
 
@@ -657,7 +667,7 @@ WifiState handleApStart()
   if (modeResult)
   {
     bool startResult;
-    if (strlen(_ap_passphrase) == 0)
+    if (_ap_passphrase.length() == 0)
     {
       startResult = WiFi.softAP(_ap_ssid);
     }
@@ -669,16 +679,6 @@ WifiState handleApStart()
     {
       printWifi();
       Serial.println(F("SoftAP starting"));
-      if (dnsServer.start(53, "*", WiFi.softAPIP()))
-      {
-        printWifi();
-        Serial.println(F("DNS started"));
-      }
-      else
-      {
-        printWifi();
-        Serial.println(F("DNS NOT started!"));
-      }
       return AP_START_WAIT;
     }
     Serial.println(F("Could not start softAP."));
@@ -724,12 +724,10 @@ WifiState handleApStartWait()
         {
           setWifiAPpIPv4Netmask(_ap_netmask);
         }
-        strncpy(_ap_ssid_working, _ap_ssid, sizeof(_ap_ssid_working));
-        char savedSsid[MAX_SSID_LEN];
-        getWifiApSsid(savedSsid, sizeof(savedSsid));
-        if (strncmp(_ap_ssid, savedSsid, sizeof(savedSsid)) != 0)
+        _ap_ssid_working = _ap_ssid;
+        if (getWifiApSsid() != _ap_ssid)
         {
-          setWifiApSsid(_ap_ssid, sizeof(_ap_ssid_working));
+          setWifiApSsid(_ap_ssid);
         }
         _apTestChangedSettings = false;
       }
@@ -737,6 +735,19 @@ WifiState handleApStartWait()
       Serial.print(F("AP is now available, IP: "));
       _ipAddress = WiFi.softAPIP();
       Serial.println(_ipAddress);
+
+      dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+      dnsServer.setTTL(300);
+      if (dnsServer.start(53, "*", WiFi.softAPIP()))
+      {
+        printWifi();
+        Serial.println(F("DNS started"));
+      }
+      else
+      {
+        printWifi();
+        Serial.println(F("DNS NOT started!"));
+      }
       return AP_OK;
     }
     Serial.println(F("Could not set AP configuration"));
@@ -748,6 +759,7 @@ WifiState handleApStartWait()
 
 WifiState handleApOk()
 {
+  dnsServer.processNextRequest(); // for captive portal
   // stay in this state (events may change the state though)
   return AP_OK;
 }
@@ -786,18 +798,20 @@ void wifiSetup()
 {
   _wifiStateTs = millis();
 
-  getWifiApSsid(_ap_ssid, sizeof(_ap_ssid));
-  strncpy(_ap_ssid_working, _ap_ssid, sizeof(_ap_ssid_working));
-  getWifiStaPassphrase(_ap_passphrase, sizeof(_ap_passphrase));
-  getWifiHostname(_hostname, sizeof(_hostname));
-  strncpy(_ap_passphrase_working, _ap_passphrase, sizeof(_ap_passphrase_working));
+  _ap_ssid = getWifiApSsid();
+  _ap_ssid_working = _ap_ssid;
+  _hostname = getWifiHostname();
+
+  _ap_passphrase = getWifiApPassphrase();
+  _ap_passphrase_working = _ap_passphrase;
+
   _ap_ip = wifiApIPv4Address();
   _ap_ip_working = _ap_ip;
   _ap_netmask = wifiApIPv4Netmask();
   _ap_netmask_working = _ap_netmask;
 
-  getWifiStaSsid(_sta_ssid, sizeof(_sta_ssid));
-  getWifiStaPassphrase(_sta_passphrase, sizeof(_sta_passphrase));
+  _sta_ssid = getWifiStaSsid();
+  _sta_passphrase = getWifiStaPassphrase();
 
   // register wifi event handlers
 
@@ -832,85 +846,61 @@ void wifiLoop()
 
   switch (_wifiState)
   {
-
-    /*case UNHINGE:
-      nextState = UNHINGE;
-      break;*/
-
   case NO_WIFI_YET:
     nextState = handleNoWifiYet();
     break;
-
   case START_STA_OR_AP:
     nextState = handleStartStaOrAp();
     break;
-
   case STA_START:
     nextState = handleStaStart();
     break;
-
   case STA_START_WAIT:
     nextState = handleStaStartWait();
     break;
-
   case STA_OK:
     nextState = handleStaOk();
     break;
-
   case STA_FAIL:
     nextState = handleStaFail();
     break;
-
   case STA_LOST_CONNECTION:
     nextState = handleStaLostConnection();
     break;
-
   case STA_RECONNECT:
     nextState = handleStaReconnect();
     break;
-
   case STA_RECONNECT_WAIT:
     nextState = handleStaReconnectWait();
     break;
-
   case STA_SWITCH_TO_AP:
     nextState = handleStaSwitchToAp();
     break;
-
   case STA_SWITCH_WAIT_STA_DOWN:
     nextState = handleStaSwitchWaitStaDown();
     break;
-
   case AP_START:
     nextState = handleApStart();
     break;
-
   case AP_START_WAIT:
     nextState = handleApStartWait();
     break;
-
   case AP_OK:
-    dnsServer.processNextRequest(); // for captive portal
     nextState = handleApOk();
     break;
-
   case AP_SWITCH_TO_STA:
     nextState = handleApSwitchToSta();
     break;
-
   case AP_SWITCH_WAIT_AP_DOWN:
     nextState = handleApSwitchWaitApDown();
     break;
-
   case AP_FAIL:
     nextState = handleApFail();
     break;
-
   case NO_WIFI_PERM:
     // dead end
     nextState = NO_WIFI_PERM;
     break;
-
   default:
     break;
   }

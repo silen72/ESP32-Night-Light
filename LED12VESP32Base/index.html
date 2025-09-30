@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>ESP32 LED Strip</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:,">
+</head>
+
+<body>
+    <script>
+        function configButton() {
+            setTimeout(function () { window.open("config.html", "_self"); }, 300);
+        }
+    </script>
+
+    <h1>ESP32 LED Strip</h1>
+    <p>Firmware: %FW_MA%.%FW_MI%.%FW_P%</p>
+    <h2>Light is %LIGHT_STATE% ( %LIGHT_BRIGHT% )</h2>
+    <h2>Night Light is %NIGHT_LIGHT_STATE% ( %NIGHT_LIGHT_BRIGHT% )</h2>
+    <p>LDR: %LDR%, thres %LDR_THRSH% </p>
+    <p>Motion: %PRES_MOT%</p>
+    <p> distance: %PRES_MOT_DIST% , min %PRES_MOT_DIST_MIN%, max %PRES_MOT_DIST_MAX% </p>
+    <p> energy: %PRES_MOT_ENER% , min %PRES_MOT_ENER_MIN%, max %PRES_MOT_ENER_MAX% </p>
+    <p>Presence (stationary): %PRES_STAT%</p>
+    <p> distance: %PRES_STAT_DIST% , min %PRES_STAT_DIST_MIN%, max %PRES_STAT_DIST_MAX% </p>
+    <p> energy: %PRES_STAT_ENER% , min %PRES_STAT_ENER_MIN%, max %PRES_STAT_ENER_MAX% </p>
+    <p>No Presence duration: %PRES_NON_DUR% , max %PRES_NON_DUR_MAX% </p>
+    <button onclick="configButton()">Configuration</button>
+</body>
+
+</html>

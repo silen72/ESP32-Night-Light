@@ -13,6 +13,9 @@ uint8_t ledStripCurrentBrightness();
 
 // Set a new target brightness value.
 void ledStripSetTargetBrightness(uint8_t brightness);
+// Set a new transistion durcation
+void ledStripSetTransitionDuration(uint16_t value);
+uint16_t ledStripGetTransitionDuration();
 
 // Gives a visual confirmation via the LED strip (two short off-on-pulses).
 // Can also visualize "on" or "off" after the two blinks. Set alsoConfirmState to true for this and set alsoConfirmState.

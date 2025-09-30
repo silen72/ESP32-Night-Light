@@ -1,0 +1,94 @@
+# ESP32 Night Light
+
+Code and hardware to build a lamp that also serves as a night light.
+
+## Requirements
+
+* The lamp's purpose is to be a secondary light source in a living room. It is supposed to sit on top of book shelves and illuminate the complete wall end to end (3.30m).
+* The lamp must be switchable manually at the lamp and via network.
+* "Via network" means (here and on further usage): WiFi, web interface, web api and MQTT.
+
+* The lamp is expected to serve as a night light when switched off.
+* Night light means that the lamp must turn on at a low brightness, when both of the following criteria are met in the room:
+  1. It is sufficiently dark -> brightness sensor necessary.
+  2. One or more persons are present -> presence detection necessary.
+* Night light also means that the night light must turn off when no persons are close to the lamp any more.
+* The lamp must have the option to disable the night light function temporarily and reenable it later on (like for when watching a movie and it is supposed to be pitch dark in the room).
+* It must be configurable, at which brightness in the room the night light is switched on. The night light threshold value for the brightness sensor readings must be configurable. 
+* The presence detection must be configurable. It must be possible to limit it to the room or parts of the room.
+
+* The lamp must be able to give light in a range of brightnesses.
+* The brightness must be controllable manually at the lamp and via network.
+* The default brightness for normal mode as well as night light mode have to be configurable manually at the lamp and via network.
+* Changes in brightness must happen with a smooth transition.
+
+* Configurations made manually at the lamp and via network must be storable as a default, should the device lose power.
+* Configurations made available manually at the lamp must also be storable as a default manually at the lamp.
+
+* You will make mistakes. Build it modular and with replacable parts in mind.
+* Make is reasonably safe: Use strain reliefs and heat-shrink tube for the cables. Make plugs and sockets easily distinguishable and polarity safe.
+* Do not burn down the house.
+
+## Hardware
+
+The main driver for our hardware choices was the fact that we needed the light to be along a complete wall on top of two bookshelves. That led us immediately to an LED strip. Consequently we needed something to switch and dim that LED strip along with some parts that do the brightness detection and the presence detection, all orchestrated by a microcontroller.
+
+A few more decision came along, in no particular order:
+
+* Because we wanted **presence** detection and not only **motion** detection, we opted for a radar sensor. That part (LD2410) needs 5V and has a UART/Serial interface.
+* For the microcontroller we opted for the Espressif product range because of the "controllable via network" requirement. First idea was an ESP8266. But the [library for the radar sensor](https://github.com/ncmreynolds/ld2410) is not compatible with those as they lack a second Serial interface. The first Serial interface is definitely reserved for debugging, so ESP32 it is. That needs 3.3V, but when on a dev board with an USB jack it has a voltage regulator for making 3.3V from the 5V coming from USB. So, an ESP32 dev board it is. And simply because we had some of those in the drawer, an ESP32 DevKit (ESP32-WROOM-32) it is.
+* The LED strip will be mostly unreachable, glued to the top of the book shelves. That made a "control unit" necessary that is reachable, like attached to the side of the book shelve at a convenient height.
+* That control unit will be visible, so it is supposed to be looking rather nice. That means slim visible wires (if any) and a decent case. The wires for providing the LED strip need a considerable thickness, so those were not to be part of the control unit. That in turn required a separate "processing unit" for anything but the manual control parts.
+* Speaking of "the control unit looking rather nice", we wanted the control unit to be white like the book shelves and no visible movable parts on the control unit. We had some really small touch sensor dev board in stock to use for that and luckily they work very well hidden behind the 2mm platic wall of a cheap but still "rather nice looking" commercially available shell.
+* As it turns out, we need a) 12V for the LED strip, b) 5V for the radar sensor and c) 3.3V for all the rest. That calls for a 12V power supply and step down / buck converter for converting the 12V into 5V. There are plenty of options available, we chose a DD4012SA that can provide 1A at 5V, which is plenty enough.
+* The 12V LED strip neutral white requires 9 Watt/meter. For the length of 3.30m we want, that makes 29.7 Watts when the LEDs are fully on (measured: 1.8-1.9A -> 22-23W ). The ESP32 will feature WiFi. Therefore it will need ~300mA at 5V. All the remaining parts will also draw, but negligible compared to the above two. That sums up to ~30W. Because the whole lamp is powered by 12V, that makes ~2.5A. To have a little wiggle room, the power source should be able to provide 12V and at least 3A (36W).
+* The wires and cables for connecting the "processing unit" with power supply and LED strip must be beefy enough for 2.5A. That calls for at least AWG25 / 0.45mm diameter / 0.16mm^2 cross section area.
+* To dim the LED strip we chose a [MOSFET](https://en.wikipedia.org/wiki/MOSFET) that conducts with low resistance when it receives 3.3V on its gate. That way the circuit is really simple and the MOSFET can be controlled directly with only one pin of the microcontroller. It is an [n-channel MOSFET so it switches the LED strip circuit behind the LED](https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Mosfet_n-ch_circuit.svg/260px-Mosfet_n-ch_circuit.svg.png). Other MOSFETs are possible here because we have 5V and 12V available on the circuit board, but would require either more parts like a transistor to deliver enough voltage to the gate or a completely different design for p-channel MOSFETs.
+* For the brightness sensor we decided to go with a simple [LDR](https://en.wikipedia.org/wiki/Photoresistor) and a voltage divider. That way we [can measure brightness as analog voltage on one pin of the microcontroller](https://www.instructables.com/Using-an-LDR-Sensor-With-Arduino/).
+
+
+### The circuit (board)
+
+* All traces connecting power supply and LED strip need to be thick enough, we used 0.6mm tinned wire.
+
+### The processing unit
+
+* White plastic box
+* Circuit board
+* 12V power in
+* LED power out
+* LDR
+* Presence sensor
+
+### The control unit
+
+* Four touch buttons
+* A white cable with six wires, two for providing power (3.3V, GND) and one for each touch button
+
+### Bill of material (BOM)
+
+This is the Bill of material (BOM) we came up with:
+* 1x 12V LED strip neutral white (3.30m, 9 Watt/meter -> ~ 30 Watt -> ~2.5 A)
+* 1x [ESP32 DEVKIT (ESP-WROOM-32, 30 pins) board](https://www.aliexpress.com/item/4000120651745.html)
+* 1x [Radar presence and movement detector 24Ghz (LD2410) **with connection cable**, needs 5V](https://www.aliexpress.com/item/1005005118362576.html)
+* 1x LDR
+* 1x [MOSFET IRLB8721 (n-channel)](https://www.infineon.com/cms/en/product/power/mosfet/n-channel/irlb8721/)
+* 1x Resistor
+* 1x Resistor
+* 4x [touch buttons (need either 5V or 3.3V)](https://www.aliexpress.com/item/1005006496008452.html)
+* 1x [Buck Converter DD4012SA (input: 5-40V DC, output: 5V, up to 1A) (for powering the ESP32 DEVKIT)](https://www.aliexpress.com/item/33042340908.html)
+* 1x Power supply 12V, at least 3A, 36W and ideally with a male barrel connector 5.5 × 2.5 mm. We use a power supply rated 4.16A. 50W from our spare box. Sometimes it pays to be a hoarder. 
+* 2x [nice looking white cases/boxes 100 X 60 X 25 mm, they are in fact more very light gray than white...](https://www.amazon.de/Anschlussdose-wasserdichte-Anschlusskästen-Elektronische-Stromabzweigdose/dp/B0CWXJQD79)
+* [some nice looking, white cable for connecting the control unit with the processing unit](https://www.aliexpress.com/item/1005001568834817.html)
+* some more cables for connecting the processing unit with the power supply and the LED strip, at least AWG25 / 0.45mm diameter / 0.16mm^2 cross section area
+* 1x [barrel connector 5.5 × 2.5 mm female](https://www.aliexpress.com/item/1005006979680743.html)
+* 1x [barrel connector 5.5 × 2.5 mm male](https://www.aliexpress.com/item/1005006979680743.html)
+* 1x [a protoyping board / perfboard 5cm x 7cm](https://www.amazon.de/gp/product/B0728HZHTR)
+* 2x female headers 1x15
+* 1x [fuse holder](https://www.amazon.de/dp/B09QFY4JNG)
+* 1x [fuse 3A (3.15A)](https://www.amazon.de/dp/B01AWDUCCA)
+* some heat-shrink tubing to create a simple strain relief
+
+Care must be taken regarding polarity on the barrel connector: our power supply has ground on the outside, +12V on the inside .
+
+## Firmware

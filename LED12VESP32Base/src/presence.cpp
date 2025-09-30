@@ -5,18 +5,19 @@
 ld2410 radar;
 
 unsigned long const SETUP_DELAY_MS = 1500;
+unsigned long const READ_DELAY_MS = 300;
 
-uint32_t lastReading = 0;
+unsigned long _lastReading = 0;
 bool radarConnected = false;
-unsigned long setupTs = 0;
-bool setupDone = false;
+unsigned long _setupTs = 0;
+bool _setupDone = false;
 
 Stream *debug_uart_presence = nullptr;
 
 LD2410Firmware firmwareInfo()
 {
   LD2410Firmware fwInfo;
-  if (setupDone && radar.requestFirmwareVersion())
+  if (_setupDone && radar.requestFirmwareVersion())
   {
     fwInfo.Valid = true;
     fwInfo.Major = radar.firmware_major_version;
@@ -29,7 +30,7 @@ LD2410Firmware firmwareInfo()
 LD2410Detection presenceInfo()
 {
   LD2410Detection detect;
-  if (setupDone)
+  if (_setupDone)
   {
     detect.presenceDetected = radar.presenceDetected();
     detect.movingTargetDetected = radar.movingTargetDetected();
@@ -51,7 +52,7 @@ LD2410Detection presenceInfo()
 LD2410Config currentConfig()
 {
   LD2410Config config;
-  config.Valid = setupDone && radar.requestCurrentConfiguration();
+  config.Valid = _setupDone && radar.requestCurrentConfiguration();
   if (config.Valid)
   {
     config.max_gate = radar.max_gate;
@@ -83,19 +84,24 @@ void presenceSetup()
 {
   // radar.debug(MONITOR_SERIAL);                                     // Uncomment to show debug information from the library on the Serial Monitor. By default this does not show sensor reads as they are very frequent.
   RADAR_SERIAL.begin(256000, SERIAL_8N1, RADAR_RX_PIN, RADAR_TX_PIN); // UART for monitoring the radar
-  setupTs = millis();
+  _setupTs = millis();
 }
 
 void presenceLoop()
 {
-  if (setupDone)
+  unsigned long now = millis();
+  if (_setupDone)
   {
-    radar.read();
+    if ((now - _lastReading) > READ_DELAY_MS)
+    {
+      radar.read();
+      _lastReading = now;
+    }
   }
   else // delay reading the sensor for a few milliseconds
   {
-    setupDone = ((millis() - setupTs) > SETUP_DELAY_MS);
-    if (setupDone)
+    _setupDone = ((now - _setupTs) > SETUP_DELAY_MS);
+    if (_setupDone)
     {
       if (debug_uart_presence != nullptr)
       {

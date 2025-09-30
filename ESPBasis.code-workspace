@@ -2,6 +2,10 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"name": "LED12VESP32Base",
+			"path": "LED12VESP32Base"
 		}
 	],
 	"settings": {

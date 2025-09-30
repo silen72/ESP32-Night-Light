@@ -19,6 +19,7 @@ State _state = State::OFF; // initial state is always OFF -> no light
 bool _allowNightLightMode = true;        // Whether night light should be turned on when it is dark enough and presence is detected
 unsigned long _nightLightEnabledTs = 0;  // Timestamp, when night light was switched on
 unsigned long _nightLightOnDuration = 0; // The duration the night light stays on even when presence is no longer detected
+unsigned long _noPresenceDuration = 0;   //
 uint8_t _nightLightBrightness = 0;       // Night light will be set to this brightness when enabled
 uint8_t _maxNightLightBrightness = 0;    // Maximum allowed night light brightness
 uint8_t _onBrightness = 0;               // Light will be set to this brightness when enabled
@@ -30,8 +31,6 @@ bool _ignoreMinusLongClick = false;      // To avoid unintentionally decreasing 
 unsigned long _lastTripleClickTs = 0;
 uint8_t _factoryResetCount = 0;
 uint8_t _forceApModeCount = 0;
-
-uint16_t _transitionDurationMs = 0; // A smooth transition between the current and a target brightness will be finished within this duration.
 
 uint16_t _ldrValue = 0;            // The current measurement coming from the ldr (dark 0 .. 4095 bright). Gets updated every loop cycle.
 uint16_t _nightLightThreshold = 0; // LDR values equal or less than this value warrant switching the night light on.
@@ -273,10 +272,10 @@ bool isMovingTargetDetected()
     return false;
   uint16_t dist = _prsInfo.movingTargetDistance;
   uint8_t energy = _prsInfo.movingTargetEnergy;
-  return dist <= _maxMovingTargetDistance &&
-         dist >= _minMovingTargetDistance &&
-         energy <= _maxMovingTargetEnergy &&
-         energy >= _minMovingTargetEnergy;
+  return (dist <= _maxMovingTargetDistance) &&
+         (dist >= _minMovingTargetDistance) &&
+         (energy <= _maxMovingTargetEnergy) &&
+         (energy >= _minMovingTargetEnergy);
 }
 
 bool isStationaryTargetDetected()
@@ -285,10 +284,10 @@ bool isStationaryTargetDetected()
     return false;
   uint16_t dist = _prsInfo.stationaryTargetDistance;
   uint8_t energy = _prsInfo.stationaryTargetEnergy;
-  return dist <= _maxStationaryTargetDistance &&
-         dist >= _minStationaryTargetDistance &&
-         energy <= _maxStationaryTargetEnergy &&
-         energy >= _minStationaryTargetEnergy;
+  return (dist <= _maxStationaryTargetDistance) &&
+         (dist >= _minStationaryTargetDistance) &&
+         (energy <= _maxStationaryTargetEnergy) &&
+         (energy >= _minStationaryTargetEnergy);
 }
 
 // Checks whether presence has been detected within the preferred confinements
@@ -321,7 +320,7 @@ void setTargetBrightness(uint8_t newTargetBrightness)
   if (_debugUartMain != nullptr)
   {
     _debugUartMain->print(F(" => change target brightness from "));
-    _debugUartMain->println(_targetBrightness);
+    _debugUartMain->print(_targetBrightness);
     _debugUartMain->print(F(" to "));
     _debugUartMain->println(newTargetBrightness);
   }
@@ -368,32 +367,57 @@ void setIgnoreMinusLongClick(bool value)
 }
 
 /*
+
+  State transitions
+
+*/
+
+void transitionToOn(uint8_t brightness)
+{
+  setTargetBrightness(brightness);
+  setState(START_TRANSIT_TO_ON);
+}
+
+void transitionToOn()
+{
+  uint8_t brightness;
+  if (_state == ON)
+  {
+    // when on toggle between max brightness and configured brightness
+    brightness = _targetBrightness < _maxBrightness ? _maxBrightness : _onBrightness;
+  }
+  else
+  {
+    // switch on at configured brightness
+    brightness = _onBrightness;
+  }
+  transitionToOn(brightness);
+}
+
+void transitionToNightLight(uint8_t brightness)
+{
+  _nightLightBrightness = brightness;
+  setState(START_TRANSIT_TO_NIGHT_LIGHT);
+}
+
+/*
+
+  Button handlers
+
+*/
+
+/*
  -------------------
  ---- ON button ----
  -------------------
  */
 
 // Handle single click on the ON button:
-// switch on LED strip with previous brightness
+// switch on LED strip
 void ctrlClickOn(uint8_t btn)
 {
   debugButtonAndState(OnButton, single_click);
-
-  switch (_state)
-  {
-  // do nothing when transitioning to on
-  case START_TRANSIT_TO_ON:
-  case TRANSIT_TO_ON:
-    debugClickIgnored();
-    break;
-  // when on toggle between max brightness and configured brightness
-  case ON:
-    setTargetBrightness(_targetBrightness < _maxBrightness ? _maxBrightness : _onBrightness);
-    setState(START_TRANSIT_TO_ON);
-    return;
-  }
-  setTargetBrightness(_onBrightness);
-  setState(START_TRANSIT_TO_ON);
+  transitionToOn();
 }
 
 // Handle double click on the ON button:
@@ -467,8 +491,7 @@ void handlePlus(uint8_t btn)
     if (newNightLightBrightness > _nightLightBrightness)
     {
       debugPlus(true, _nightLightBrightness, newNightLightBrightness);
-      _nightLightBrightness = newNightLightBrightness;
-      setState(START_TRANSIT_TO_NIGHT_LIGHT);
+      transitionToNightLight(newNightLightBrightness);
     }
     else
     {
@@ -638,8 +661,7 @@ void handleMinus(uint8_t btn)
     else if (newNightLightBrightness < _nightLightBrightness)
     {
       debugMinus(true, _nightLightBrightness, newNightLightBrightness);
-      _nightLightBrightness = newNightLightBrightness;
-      setState(START_TRANSIT_TO_NIGHT_LIGHT);
+      transitionToNightLight(newNightLightBrightness);
     }
     else
     {
@@ -796,6 +818,12 @@ void ctrlLongClickOff(int8_t btn)
   confirmViaLEDStrip();
 }
 
+/*
+
+  API
+
+*/
+
 DeviceStateInfo getDeviceState()
 {
   DeviceStateInfo info;
@@ -805,28 +833,102 @@ DeviceStateInfo getDeviceState()
   info.maxNightLightBrightness = _maxNightLightBrightness;
   info.movingTargetDetected = isMovingTargetDetected();
   info.movingTargetDistance = _prsInfo.movingTargetDistance;
+  info.movingTargetDistanceMin = _minMovingTargetDistance;
+  info.movingTargetDistanceMax = _maxMovingTargetDistance; 
   info.movingTargetEnergy = _prsInfo.movingTargetEnergy;
+  info.movingTargetEnergyMin = _minMovingTargetEnergy;
+  info.movingTargetEnergyMax = _maxMovingTargetEnergy;
   info.nightLightBrightness = _nightLightBrightness;
   info.nightLightOnDuration = _nightLightOnDuration;
   info.nightLightThreshold = _nightLightThreshold;
+  info.noPresenceDuration = _state == NIGHT_LIGHT_ON ? _noPresenceDuration : 0;
   info.onBrightness = _onBrightness;
   info.state = _state;
   info.stationaryTargetDetected = isStationaryTargetDetected();
   info.stationaryTargetDistance = _prsInfo.stationaryTargetDistance;
+  info.stationaryTargetDistanceMin = _minStationaryTargetDistance;
+  info.stationaryTargetDistanceMax = _maxStationaryTargetDistance;
   info.stationaryTargetEnergy = _prsInfo.stationaryTargetEnergy;
+  info.stationaryTargetEnergyMin = _minStationaryTargetEnergy;
+  info.stationaryTargetEnergyMax = _maxStationaryTargetEnergy;
   info.stepBrightness = _stepBrightness;
   info.brightness = _targetBrightness;
-  info.transitionDurationMs = _transitionDurationMs;
+  info.transitionDurationMs = ledStripGetTransitionDuration();
 
   info.presenceDetected = info.movingTargetDetected && info.stationaryTargetDetected;
   return info;
+}
+
+void modifyAllowNightLightMode(bool value) { _allowNightLightMode = value; }
+void modifyNightLightOnDurationSeconds(uint16_t value) { _nightLightOnDuration = value * 1000; }
+void modifyNightLightBrightness(uint8_t value)
+{
+  _nightLightBrightness = value;
+  if (_state == NIGHT_LIGHT_ON || _state == TRANSIT_TO_NIGHT_LIGHT)
+    setState(START_TRANSIT_TO_NIGHT_LIGHT);
+}
+void modifyNightLightThreshold(uint16_t value) { _nightLightThreshold = value; }
+void modifyMaxNightLightBrightness(uint8_t value)
+{
+  // When lamp is already on and at current max brightness ...
+  bool transitToValue = _state == NIGHT_LIGHT_ON && value != _maxNightLightBrightness;
+  _maxNightLightBrightness = value;
+  // ... fade lamp brightness to new max brightness
+  if (transitToValue)
+    transitionToNightLight(_maxNightLightBrightness);
+}
+
+void modifyOnBrightness(uint8_t value)
+{
+  if (value > _maxBrightness)
+    value == _maxBrightness;
+  // When lamp is already on and at on brightness ...
+  bool transitToValue = _state == ON && _targetBrightness == _onBrightness && value != _onBrightness;
+  _onBrightness = value;
+  // ... fade lamp brightness to new on brightness
+  if (transitToValue)
+    transitionToOn(_onBrightness);
+}
+
+void modifyMaxBrightness(uint8_t value)
+{
+  // When lamp is already on and at current max brightness ...
+  bool transitToValue = _state == ON && _targetBrightness == _maxBrightness && value != _maxBrightness;
+  _maxBrightness = value;
+  // ... fade lamp brightness to new max brightness
+  if (transitToValue)
+    transitionToOn(_maxBrightness);
+}
+
+void modifyBrightnessStep(uint8_t value) { _stepBrightness = value; }
+void modifyTransitionDurationMs(uint16_t value) { ledStripSetTransitionDuration(value); }
+void modifyMaxMovingTargetDistance(uint16_t value) { _maxMovingTargetDistance = value; }
+void modifyMinMovingTargetDistance(uint16_t value) { _minMovingTargetDistance = value; }
+void modifyMaxMovingTargetEnergy(uint8_t value) { _maxMovingTargetEnergy = value; }
+void modifyMinMovingTargetEnergy(uint8_t value) { _minMovingTargetEnergy = value; }
+void modifyMaxStationaryTargetDistance(uint16_t value) { _maxStationaryTargetDistance = value; }
+void modifyMinStationaryTargetDistance(uint16_t value) { _minStationaryTargetDistance = value; }
+void modifyMaxStationaryTargetEnergy(uint8_t value) { _maxStationaryTargetEnergy = value; }
+void modifyMinStationaryTargetEnergy(uint8_t value) { _minStationaryTargetEnergy = value; }
+
+void modifyLightState(bool lampOn)
+{
+  if (lampOn)
+  {
+    transitionToOn();
+  }
+  else
+  {
+    setState(START_TRANSIT_TO_OFF);
+  }
+  
 }
 
 /*
 
   State handlers
 
- */
+*/
 
 // When the lamp is off or turning off: check whether the night light should be switched on.
 State nightLightCheckOff()
@@ -837,17 +939,18 @@ State nightLightCheckOff()
 // When the night light is on: check whether the night light can be switched off again.
 State nightLightCheckOn()
 {
+  auto now = millis();
   // update the timestamp of the last presence detection
-  if (_prsInfo.presenceDetected)
+  if (isPresenceDetected())
   {
-    _nightLightEnabledTs = millis();
+    _nightLightEnabledTs = now;
   }
 
   // calculate the duration with no presence detection since switching on the night light
-  unsigned long noPresenceDuration = millis() - _nightLightEnabledTs;
+  _noPresenceDuration = now - _nightLightEnabledTs;
 
   // switch off the night light when night light mode is not allowed any more or no presence has been detected for long enough, otherwise leave it on
-  return (!_allowNightLightMode || noPresenceDuration > _nightLightOnDuration) ? START_TRANSIT_TO_OFF : NIGHT_LIGHT_ON;
+  return (!_allowNightLightMode || (_noPresenceDuration > _nightLightOnDuration)) ? START_TRANSIT_TO_OFF : NIGHT_LIGHT_ON;
 }
 
 // Trigger the brightness change to target brightness.
@@ -895,6 +998,7 @@ State transitToOff()
 // Trigger the brightness change to night light brightness.
 State startTransitToNightLight()
 {
+  _nightLightEnabledTs = millis();
   setTargetBrightness(_nightLightBrightness);
   setLEDStripBrightness();
   return TRANSIT_TO_NIGHT_LIGHT;
@@ -965,11 +1069,11 @@ void deviceSetup()
   _nightLightThreshold = nightLightThreshold();
   _maxNightLightBrightness = maxNightLightBrightness();
 
-  _transitionDurationMs = transitionDurationMs();
+  //_transitionDurationMs = transitionDurationMs();
 
   _onBrightness = onBrightness();
   _maxBrightness = maxBrightness();
-  _stepBrightness = stepBrightness();
+  _stepBrightness = brightnessStep();
 
   _maxMovingTargetDistance = maxMovingTargetDistance();
   _minMovingTargetDistance = minMovingTargetDistance();
@@ -989,7 +1093,7 @@ void deviceSetup()
 
   ldrSetup();
 
-  // presenceDebug(MONITOR_SERIAL);
+  presenceDebug(MONITOR_SERIAL);
   presenceSetup();
 
   // ledStripDebug(MONITOR_SERIAL);

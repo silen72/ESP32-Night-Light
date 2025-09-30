@@ -11,6 +11,6 @@ void webInterfaceDebug(Stream &terminalStream);
 void webInterfaceSetup();
 void webInterfaceLoop();
 
-void addHandlers(AsyncWebServer &server);
+void addWebInterfaceHandlers(AsyncWebServer &server);
 
 #endif

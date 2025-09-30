@@ -3,6 +3,43 @@
 
 #include <Arduino.h>
 
+/*
+    Parameter names for Preference and for the web API
+*/
+
+static const char *PrefBrightnessStep = "stbr";
+static const char *PrefTransitionDurationMs = "ptdm";
+static const char *PrefMaxBrightness = "mbr";
+static const char *PrefOnBrightness = "obr";
+static const char *PrefNightLightOnDuration = "odu";
+static const char *PrefNightLightBrightness = "nlbr";
+static const char *PrefMaxNightLightBrightness = "mnlb";
+static const char *PrefAllowNightLight = "alnl";
+static const char *PrefNightLightLdrThreshold = "nllt";
+static const char *PrefMinMovingTargetDistance = "mimd";
+static const char *PrefMaxMovingTargetDistance = "mamd";
+static const char *PrefMinMovingTargetEnergy = "mime";
+static const char *PrefMaxMovingTargetEnergy = "mame";
+static const char *PrefMinStationaryTargetDistance = "misd";
+static const char *PrefMaxStationaryTargetDistance = "masd";
+static const char *PrefMinStationaryTargetEnergy = "mise";
+static const char *PrefMaxStationaryTargetEnergy = "mase";
+
+static const char *PrefWifiHostname = "whon";
+static const char *PrefWifiApSsid = "wass";
+static const char *PrefWifiApPassphrase = "wapa";
+static const char *PrefWifiApIpAddress = "waip";
+static const char *PrefWifiApNetmask = "wanm";
+static const char *PrefWifiStaSsid = "wsss";
+static const char *PrefWifiStaPassphrase = "wspa";
+
+static const char *PrefWebAuthUsername = "waun";
+static const char *PrefWebAuthPassword = "wapw";
+
+/*
+    Default values
+*/
+
 static const uint8_t DEFAULT_BRIGHTNESS_STEP = 8;
 static const uint16_t DEFAULT_TRANSITION_DURATION_MS = 1000;
 static const uint8_t DEFAULT_MAX_BRIGHTNESS = 210;
@@ -15,34 +52,38 @@ static const uint16_t DEFAULT_LDR_NIGHTLIGHT_THRESHOLD = 30;
 static const uint16_t DEFAULT_NIGHTLIGHT_ON_DURATION_S = 30; // night light stays on for 30s, then checks if it is still needed
 
 static const uint16_t DEFAULT_MIN_MOVING_TARGET_DISTANCE = 0;
-static const uint16_t DEFAULT_MAX_MOVING_TARGET_DISTANCE = UINT16_MAX;
+static const uint16_t DEFAULT_MAX_MOVING_TARGET_DISTANCE = 300; // UINT16_MAX
 static const uint8_t DEFAULT_MIN_MOVING_TARGET_ENERGY = 0;
 static const uint8_t DEFAULT_MAX_MOVING_TARGET_ENERGY = UINT8_MAX;
 static const uint16_t DEFAULT_MIN_STATIONARY_TARGET_DISTANCE = 0;
-static const uint16_t DEFAULT_MAX_STATIONARY_TARGET_DISTANCE = UINT16_MAX;
+static const uint16_t DEFAULT_MAX_STATIONARY_TARGET_DISTANCE = 300; // UINT16_MAX
 static const uint8_t DEFAULT_MIN_STATIONARY_TARGET_ENERGY = 0;
 static const uint8_t DEFAULT_MAX_STATIONARY_TARGET_ENERGY = UINT8_MAX;
 
 static const char DEFAULT_WIFI_HOSTNAME[] = "lamp";
-static const size_t DEFAULT_WIFI_HOSTNAME_SIZE = 4;
+//static const size_t DEFAULT_WIFI_HOSTNAME_SIZE = 4;
 static const char DEFAULT_WIFI_AP_SSID[] = "esp32LEDStrip";
-static const size_t DEFAULT_WIFI_AP_SSID_SIZE = 13;
+//static const size_t DEFAULT_WIFI_AP_SSID_SIZE = 13;
 static const char DEFAULT_WIFI_AP_PASSPHRASE[] = "";
-static const size_t DEFAULT_WIFI_AP_PASSPHRASE_SIZE = 0;
+//static const size_t DEFAULT_WIFI_AP_PASSPHRASE_SIZE = 0;
 static const uint32_t DEFAULT_WIFI_AP_IP = IPAddress(192, 168, 72, 1);
 static const uint32_t DEFAULT_WIFI_AP_NETMASK = IPAddress(255, 255, 255, 0);
 static const char DEFAULT_WIFI_STA_SSID[] = "";
-static const size_t DEFAULT_WIFI_STA_SSID_SIZE = 0;
+//static const size_t DEFAULT_WIFI_STA_SSID_SIZE = 0;
 static const char DEFAULT_WIFI_STA_PASSPHRASE[] = "";
-static const size_t DEFAULT_WIFI_STA_PASSPHRASE_SIZE = 0;
+//static const size_t DEFAULT_WIFI_STA_PASSPHRASE_SIZE = 0;
 
+static const String DEFAULT_WEB_AUTH_USERNAME = "admin";
+static const String DEFAULT_WEB_AUTH_PASSWORD = "lamp";
+
+/*
 static const char DEFAULT_MQTT_SERVER[] = "";
 static const size_t DEFAULT_MQTT_SERVER_SIZE = 0;
 static const char DEFAULT_MQTT_USER[] = "";
 static const size_t DEFAULT_MQTT_USER_SIZE = 0;
 static const char DEFAULT_MQTT_PASSWORD[] = "";
 static const size_t DEFAULT_MQTT_PASSWORD_SIZE = 0;
-
+*/
 
 static const uint8_t MAX_HOSTNAME_LEN = 32;
 
@@ -87,9 +128,9 @@ uint16_t transitionDurationMs();
 void setTransitionDurationMs(uint16_t value);
 
 // Get preference: Brightness will be increased and decreased by this value (possible values: 1 .. 255)
-uint8_t stepBrightness();
+uint8_t brightnessStep();
 // Set preference: Brightness will be increased and decreased by this value (possible values: 1 .. 255, 0 will be treated as 1)
-void setStepBrightness(uint8_t value);
+void setBrightnessStep(uint8_t value);
 
 // Get preference for presence detection: A stationary target must be at least this far away from the sensor (in cm) to be considered to enable the night light
 uint16_t minStationaryTargetDistance();
@@ -132,19 +173,19 @@ uint8_t maxMovingTargetEnergy();
 void setMaxMovingTargetEnergy(uint8_t value);
 
 // Get preference: Hostname of the lamp device 
-size_t getWifiHostname(char *value, uint8_t maxLen);
+String getWifiHostname();
 // Set preference: Hostname of the lamp device
-void setWifiHostname(const char *value, uint8_t maxLen);
+void setWifiHostname(const String &value);
 
 // Get preference: SSID of the access point when the lamp device opens up an AP
-size_t getWifiApSsid(char *value, uint8_t maxLen);
+String getWifiApSsid(); // size_t getWifiApSsid(char *value, uint8_t maxLen);
 // Set preference: SSID of the access point when the lamp device opens up an AP
-void setWifiApSsid(const char *value, uint8_t maxLen);
+void setWifiApSsid(const String &value); // void setWifiApSsid(const char *value, uint8_t maxLen);
 
 // Get preference: Passphrase of the access point when the lamp device opens up an AP (might be an empty string)
-size_t getWifiApPassphrase(char *value, uint8_t maxLen);
+String getWifiApPassphrase(); //size_t getWifiApPassphrase(char *value, uint8_t maxLen);
 // Set preference: Passphrase of the access point. A valid passphrase must have at least eight characters. Will set the value and return true when the requirement is met. Will not save the value and return false otherwise.
-bool setWifiApPassphrase(const char *value, uint8_t maxLen);
+void setWifiApPassphrase(const String &value); // bool setWifiApPassphrase(const char *value, uint8_t maxLen);
 
 // Get preference: IPv4 address of the access point when the lamp device opens up an AP
 uint32_t wifiApIPv4Address();
@@ -157,14 +198,21 @@ uint32_t wifiApIPv4Netmask();
 void setWifiAPpIPv4Netmask(uint32_t value);
 
 // Get preference: The device will try to connect to this SSID in STAtion mode.
-size_t getWifiStaSsid(char *value, uint8_t maxLen);
+String getWifiStaSsid();
 // Set preference: The device will try to connect to this SSID in STAtion mode.
-void setWifiStaSsid(const char *value, uint8_t maxLen);
+void setWifiStaSsid(const String &value);
 
 // Get preference: The device will try to connect to an existing WLAN with this passphrase in STAtion mode.
-size_t getWifiStaPassphrase(char *value, uint8_t maxLen);
+String getWifiStaPassphrase();
 // Set preference: The device will try to connect to an existing WLAN with this passphrase in STAtion mode.
-void setWifiStaPassphrase(const char *value, uint8_t maxLen);
+void setWifiStaPassphrase(const String &value);
+
+String getWebAuthPassword();
+void setWebAuthPassword(const String &value);
+
+String getWebAuthUsername();
+void setWebAuthUsername(const String &value);
+
 
 void factoryReset();
 
