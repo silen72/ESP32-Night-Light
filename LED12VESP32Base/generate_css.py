@@ -1,4 +1,14 @@
-html {
+"""
+py code to generate the css file
+"""
+
+
+def gen_css() -> None:
+    """
+    generate the css file
+    """
+
+    css_content = """html {
     font-family: Arial;
     display: inline-block;
     text-align: left;
@@ -64,4 +74,7 @@ body {
 
 .required {
     text-decoration: underline;
-}
+}"""
+
+    with open(file='style.css', mode='w', encoding='utf-8') as f:
+        f.write(css_content)
