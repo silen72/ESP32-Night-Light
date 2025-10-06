@@ -35,8 +35,7 @@ bool _apTestChangedSettings = false; // Whether we have a changed AP configurati
 
 String _sta_ssid;       // STA will try to connect to the WiFi with this ssid
 String _sta_passphrase; // STA will try to connect to the WiFi with this passphrase
-
-IPAddress _ipAddress = IPAddress((uint32_t)0);
+IPAddress _sta_ipAddress = IPAddress((uint32_t)0);
 
 Stream *debug_uart_wifi = nullptr;
 
@@ -71,7 +70,7 @@ WifiStateInfo wifiCurrentState()
   info.mode = _wifiMode;
   info.apModeResult = _apModeResult;
   info.staModeResult = _staModeResult;
-  info.address = _ipAddress;
+  info.address = _sta_ipAddress;
   return info;
 }
 
@@ -285,6 +284,23 @@ void modifyHostname(const String &value) { _hostname = value; }
 void modifyStaPassphrase(const String &value) { _sta_passphrase = value; }
 void modifyStaSsid(const String &value) { _sta_ssid = value; }
 
+void modifyApIpAddress(const String &value) {
+  IPAddress new_ip;
+  if (new_ip.fromString(value))
+  {
+    _ap_ip = new_ip;
+  }
+}
+
+void modifyApIpNetmask(const String &value) {
+  IPAddress new_mask;
+  if (new_mask.fromString(value))
+  {
+    _ap_netmask = new_mask;
+  }
+}
+
+
 /*
 
   event handler
@@ -436,7 +452,7 @@ WifiState handleNoWifiYet()
   WiFi.disconnect(true, false); // also turn WiFi radio off but don't erase the info about the AP to connect to as STA
   WiFi.setHostname(_hostname.c_str());
   _wifiMode = WifiMode::WifiMode_OFF;
-  _ipAddress = IPAddress((uint32_t)0);
+  _sta_ipAddress = IPAddress((uint32_t)0);
   return START_STA_OR_AP;
 }
 
@@ -569,8 +585,8 @@ WifiState handleStaStartWait()
   case WL_CONNECTED:
     printWifi();
     Serial.print(F("is connected, IP address: "));
-    _ipAddress = WiFi.localIP();
-    Serial.println(_ipAddress);
+    _sta_ipAddress = WiFi.localIP();
+    Serial.println(_sta_ipAddress);
     return STA_OK; // success
     break;
 
@@ -733,8 +749,8 @@ WifiState handleApStartWait()
       }
       printWifi();
       Serial.print(F("AP is now available, IP: "));
-      _ipAddress = WiFi.softAPIP();
-      Serial.println(_ipAddress);
+      _sta_ipAddress = WiFi.softAPIP();
+      Serial.println(_sta_ipAddress);
 
       dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
       dnsServer.setTTL(300);

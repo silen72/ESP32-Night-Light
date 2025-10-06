@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <title>ESP32 LED Strip</title>
@@ -14,19 +14,18 @@
             setTimeout(function () { window.open("config.html", "_self"); }, 300);
         }
     </script>
-
     <h1>ESP32 LED Strip</h1>
-    <p>Firmware: %FW_MA%.%FW_MI%.%FW_P%</p>
-    <h2>Light is %LIGHT_STATE% ( %LIGHT_BRIGHT% )</h2>
-    <h2>Night Light is %NIGHT_LIGHT_STATE% ( %NIGHT_LIGHT_BRIGHT% )</h2>
-    <p>LDR: %LDR%, thres %LDR_THRSH% </p>
-    <p>Motion: %PRES_MOT%</p>
-    <p> distance: %PRES_MOT_DIST% , min %PRES_MOT_DIST_MIN%, max %PRES_MOT_DIST_MAX% </p>
-    <p> energy: %PRES_MOT_ENER% , min %PRES_MOT_ENER_MIN%, max %PRES_MOT_ENER_MAX% </p>
-    <p>Presence (stationary): %PRES_STAT%</p>
-    <p> distance: %PRES_STAT_DIST% , min %PRES_STAT_DIST_MIN%, max %PRES_STAT_DIST_MAX% </p>
-    <p> energy: %PRES_STAT_ENER% , min %PRES_STAT_ENER_MIN%, max %PRES_STAT_ENER_MAX% </p>
-    <p>No Presence duration: %PRES_NON_DUR% , max %PRES_NON_DUR_MAX% </p>
+    <p>Firmware: %FWM%.%FWI%.%FWP%</p>
+    <h2>Light is %LI1% ( %LIB% )</h2>
+    <h2>Night Light is %NL1% ( %NLB% )</h2>
+    <p>LDR: %LDR%, thres %LDT% </p>
+    <p>Motion: %PM%</p>
+    <p> distance: %PM1% , min %PM2%, max %PM3% </p>
+    <p> energy: %PM4% , min %PM5%, max %PM6% </p>
+    <p>Presence (stationary): %PS%</p>
+    <p> distance: %PS1% , min %PS2%, max %PS3% </p>
+    <p> energy: %PS4% , min %PS5%, max %PS6% </p>
+    <p>No Presence duration: %PND% , max %PNM% </p>
     <button onclick="configButton()">Configuration</button>
 </body>
 

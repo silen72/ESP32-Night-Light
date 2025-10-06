@@ -51,6 +51,9 @@ struct WifiStateInfo
     unsigned long enteredStateAtTs;
 };
 
+#define IP_LENGTH_MIN 7
+#define IP_LENGTH_MAX 15
+
 WifiStateInfo wifiCurrentState();
 
 void wifiDebug(Stream &terminalStream);
@@ -60,6 +63,9 @@ void debugPrintWifiMode(Stream *stream, WifiMode mode, bool addPrintln = false);
 
 void modifyApPassphrase(const String &value);
 void modifyApSsid(const String &value);
+void modifyApIpAddress(const String &value);
+void modifyApIpNetmask(const String &value);
+
 void modifyHostname(const String &value);
 void modifyStaPassphrase(const String &value);
 void modifyStaSsid(const String &value);
